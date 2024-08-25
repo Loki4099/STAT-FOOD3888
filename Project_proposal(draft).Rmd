@@ -1,0 +1,185 @@
+---
+title: "Project proposal"
+author: "Loki"
+date: "2024-08-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Default knitting options
+knitr::opts_chunk$set(echo=TRUE, # Echo the code
+                      tidy=TRUE, # Nicely dity up code
+                      warning=FALSE, # No warnings please 
+                      message=FALSE) # No messages please
+
+options(warn=-1) 
+
+# Suppress start up warnings when loading libraries
+library <- function(...) {
+  suppressPackageStartupMessages(base::library(...))
+}
+```
+
+
+```{r libraries}
+# Load in all libraries
+library(tidyverse)
+library(here)      # directory referencing
+library(readxl)    # reading Excel files
+library(janitor)   # data cleaning 
+library(stringr)   # string manimpuation
+library(tidyr)     # new tidy functions
+```
+# Feasibility Analysis
+## 1. Research Questions:
+Question 1: Is there a dependence of grains and cereals intake (serves/g) on whether individuals have diabetes mellitus?
+Question 2: What is the correlation between grains and cereals intake (serves/g) and fasting plasma glucose?
+Question 3: What is the correlation between grains and cereals intake (serves/g) and HbA1c?
+
+
+```{r read_in_raw_data}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+```
+
+```{r}
+# Subset raw_bp to include relevant variables
+selected_bp <- raw_bp %>%
+  select(ABSHID, ABSPID, LEVELP, GRAINS1N, GRAINS2N, DIABBC)
+
+# View the first few rows to ensure the subset is correct
+head(selected_bp)
+```
+
+```{r}
+# Subset raw_bb to include relevant variables
+selected_bb <- raw_bb %>%
+  select(ABSHID, ABSPID, ABSBID, GLUCFPD, GLUCFREB, HBA1MREB, HBA1PREB, DIABFPGE, DIABPRVE)
+
+# View the first few rows to ensure the subset is correct
+head(selected_bb)
+```
+```{r}
+# Merge the datasets on ABSHID and ABSPID
+merged_data <- merge(selected_bp, selected_bb, by = c("ABSHID", "ABSPID"))
+
+# View the first few rows of the merged dataset
+head(merged_data)
+```
+```{r}
+# Create a data frame with variable names and their meanings
+variable_info <- data.frame(
+  Variable = c("GRAINS1N", "GRAINS2N", "DIABBC", "GLUCFPD", "GLUCFREB", 
+               "HBA1MREB", "HBA1PREB", "DIABFPGE", "DIABPRVE", "ABSHID", 
+               "ABSPID", "LEVELP", "ABSBID"),
+  Description = c("Grains and cereals intake (serves) Day 1",
+                  "Grains and cereals intake (serves) Day 2",
+                  "Diabetes mellitus status",
+                  "Fasting plasma glucose status (mmol/L)",
+                  "Fasting plasma glucose - ranged (mmol/L)",
+                  "HbA1c - ranged (mmol/mol)",
+                  "HbA1c - ranged (%)",
+                  "Diabetes prevalence - fasting plasma glucose (mmol/L)",
+                  "Diabetes prevalence - HbA1c (%)",
+                  "Household identifier",
+                  "Selected person identifier",
+                  "Record level identifier for Persons",
+                  "Biomedical record identifier")
+)
+
+# View the summary table
+print(variable_info)
+```
+## 2. Response Variables:
+For Question 1: DIABBC (Diabetes mellitus status) is a binary categorical response variable.
+For Question 2: GLUCFPD (Fasting plasma glucose status) is a continuous response variable.
+For Question 3: HBA1MREB (HbA1c - ranged in mmol/mol) or HBA1PREB (HbA1c - ranged in %) are continuous response variables.
+
+## 3. Predictor Variables:
+Primary Predictor: GRAINS1N and GRAINS2N (Grains and cereals intake in serves, Day 1 and Day 2).
+
+
+## 4. Potential Confounding Variables:
+```{r}
+#Find Demographic Variables
+
+```
+Demographic Variables: Age, Sex, BMI (AGEC, SEX, BMISC).
+Other Dietary Factors: Total calorie intake, intake of other macronutrients or micronutrients, physical activity levels.
+Biomarkers: Cholesterol levels, blood pressure.
+
+## 5. Data Summary:
+### Response Variable Summaries
+```{r}
+
+```
+
+### Predictor Variable Summary:
+```{r}
+
+```
+
+# 6. Initial Analyses
+```{r}
+#Chi-Square Test for Dependence (Question 1):
+table_data <- table(merged_data$DIABBC, merged_data$GRAINS1N)
+chisq.test(table_data)
+```
+```{r}
+#Correlation Analysis (Questions 2 & 3)
+cor(merged_data$GRAINS1N, merged_data$GLUCFPD, use = "complete.obs")
+cor(merged_data$GRAINS1N, merged_data$HBA1MREB, use = "complete.obs")
+```
+# 7. Visualization
+```{r}
+#Boxplot for Question 1
+boxplot(GRAINS1N ~ DIABBC, data = merged_data, 
+        main = "Grains and Cereals Intake by Diabetes Status",
+        xlab = "Diabetes Status", ylab = "Grains and Cereals Intake (Serves)")
+```
+```{r}
+#Scatter Plot for Questions 2 & 3
+plot(merged_data$GRAINS1N, merged_data$GLUCFPD, 
+     main = "Correlation between Grains Intake and Fasting Plasma Glucose",
+     xlab = "Grains and Cereals Intake (Serves)", ylab = "Fasting Plasma Glucose (mmol/L)")
+
+plot(merged_data$GRAINS1N, merged_data$HBA1MREB, 
+     main = "Correlation between Grains Intake and HbA1c",
+     xlab = "Grains and Cereals Intake (Serves)", ylab = "HbA1c (mmol/mol)")
+
+```
+# What's Next
+## 1. Further Analysis and Model Building:
+•	Logistic Regression (for Question 1):
+o	Use logistic regression to model the probability of diabetes as a function of grains and cereals intake, controlling for confounding variables.
+
+•	Linear Regression (for Questions 2 & 3):
+o	Use linear regression to model the relationship between grains and cereals intake and fasting plasma glucose/HbA1c.
+
+## 2. Addressing Potential Confounders:
+•	Perform sensitivity analysis to check the robustness of your findings against potential confounders.
+•	Consider stratification or matching if confounding is severe.
+## 3. Statistical Methods to Consider:
+•	Logistic Regression: To examine the dependence of categorical outcomes (like diabetes status) on predictors.
+•	Linear Regression: To model the relationship between continuous outcomes (like glucose levels, HbA1c) and predictors.
+•	ANOVA: To test for significant differences in means across multiple groups, especially if you expand to include more dietary categories.
+•	Multivariate Analysis: If you plan to examine multiple outcomes simultaneously.
+## 4. Data Cleaning and Preparation:
+•	Handle missing data using imputation or complete case analysis.
+•	Standardize or normalize variables if needed, particularly for biomarkers with different scales.
+## 5. Final Analysis and Reporting:
+•	Conduct the final statistical analysis using the models outlined above.
+•	Interpret the results, highlighting significant findings and their implications.
+•	Prepare visualizations that effectively communicate your results.
+
+
+
+
+```{r}
+# Save the summary table as a CSV file
+#write.csv(variable_info, file = "variable_info_summary.csv", row.names = FALSE)
+```
+
+
+
+
