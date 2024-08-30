@@ -1,0 +1,98 @@
+---
+title: "Variables"
+author: "mia"
+date: "2024-08-29"
+output:
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+```
+
+```{r}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+X_all_File_variables <- read_excel("ZIPallFiles/_all.File.variables.xlsx", 
+    sheet = "Variables", col_names = FALSE)
+
+X_all_File_variables <- X_all_File_variables %>%
+  rename(
+    Survey = `...1`,
+    Description = `...4`,
+    VariableNames = `...3`
+  )
+```
+
+```{r}
+# Define the search terms
+search_terms <- c("grain", "plasma glucose", "gender", "HbA1c", "\\bALT\\b", "GGT", "identifier", "BMI", "\\bage\\b", "\\bsex of person\\b", "diabetes")
+
+filtered_rows <- X_all_File_variables %>%
+  filter(grepl(paste(search_terms, collapse = "|"), Description, ignore.case = TRUE)) %>%
+  select(VariableNames, Description) %>%
+  distinct()
+```
+
+```{r}
+combined_data <- bind_rows(raw_bp, raw_bb)
+columns_to_keep <- filtered_rows$VariableNames
+filtered_combined_data <- combined_data %>%
+  select(any_of(columns_to_keep))
+
+kept_columns_df <- filtered_rows %>%
+  filter(VariableNames %in% names(filtered_combined_data))
+kept_columns_df %>%
+  kable(col.names = c("Variable Name", "Description"),
+        caption = "Kept Variables and Their Descriptions") %>%
+  print()
+```
+
+```{r}
+# Load necessary libraries
+library(knitr)
+library(dplyr)
+library(stringr)
+
+# Define the search terms with word boundaries where necessary
+search_terms <- c("grain", "plasma glucose", "gender", "HbA1c", "\\bALT\\b", "GGT", "identifier", "BMI", "\\bage\\b", "\\bsex of person\\b","diabetes")
+
+# Create a case-insensitive regex pattern
+search_pattern <- paste0("(?i)", paste(search_terms, collapse = "|"))
+
+# Add a column to the filtered_rows that identifies the matching search term
+kept_columns_df <- filtered_rows %>%
+  mutate(MatchingTerm = str_extract(tolower(Description), search_pattern)) %>%
+  filter(VariableNames %in% names(filtered_combined_data))
+
+# Group the results by the MatchingTerm and arrange them
+grouped_output <- kept_columns_df %>%
+  filter(!is.na(MatchingTerm)) %>%  # Ensure there are no NA values in MatchingTerm
+  arrange(MatchingTerm) %>%
+  select(MatchingTerm, VariableNames, Description)
+
+# Print the grouped output as a table using kable
+grouped_output %>%
+  kable(col.names = c("Matching Term", "Variable Name", "Description"),
+        caption = "Kept Variables and Their Descriptions Grouped by Matching Terms") %>%
+  print()
+
+group_counts <- kept_columns_df %>%
+  filter(!is.na(MatchingTerm)) %>%
+  group_by(MatchingTerm) %>%
+  summarise(Count = n(), .groups = 'drop') %>%
+  arrange(MatchingTerm)
+
+group_counts %>%
+  kable(col.names = c("Matching Term", "Count"),
+        caption = "Count of Entries for Each Matching Term") %>%
+  print()
+```
