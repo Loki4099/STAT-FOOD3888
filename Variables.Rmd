@@ -18,9 +18,10 @@ library(dplyr)
 library(knitr)
 ```
 
-```{r}
+```{r, message=FALSE}
 raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
 raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+
 X_all_File_variables <- read_excel("ZIPallFiles/_all.File.variables.xlsx", 
     sheet = "Variables", col_names = FALSE)
 
@@ -36,54 +37,41 @@ X_all_File_variables <- X_all_File_variables %>%
 # Define the search terms
 search_terms <- c("grain", "plasma glucose", "gender", "HbA1c", "\\bALT\\b", "GGT", "identifier", "BMI", "\\bage\\b", "\\bsex of person\\b", "diabetes")
 
-filtered_rows <- X_all_File_variables %>%
+Possible_Variables <- X_all_File_variables %>%
   filter(grepl(paste(search_terms, collapse = "|"), Description, ignore.case = TRUE)) %>%
   select(VariableNames, Description) %>%
   distinct()
 ```
 
 ```{r}
-combined_data <- bind_rows(raw_bp, raw_bb)
-columns_to_keep <- filtered_rows$VariableNames
-filtered_combined_data <- combined_data %>%
+bp_bb <- bind_rows(raw_bp, raw_bb)
+
+columns_to_keep <- Possible_Variables$VariableNames
+
+filtered_bp_bb <- bp_bb %>%
   select(any_of(columns_to_keep))
 
-kept_columns_df <- filtered_rows %>%
-  filter(VariableNames %in% names(filtered_combined_data))
+kept_columns_df <- Possible_Variables %>%
+  filter(VariableNames %in% names(filtered_bp_bb))
+
 kept_columns_df %>%
   kable(col.names = c("Variable Name", "Description"),
         caption = "Kept Variables and Their Descriptions") %>%
   print()
 ```
 
+There are some variables that share the same Variable Name but different in their descriptions.
+
 ```{r}
-# Load necessary libraries
-library(knitr)
-library(dplyr)
-library(stringr)
-
-# Define the search terms with word boundaries where necessary
-search_terms <- c("grain", "plasma glucose", "gender", "HbA1c", "\\bALT\\b", "GGT", "identifier", "BMI", "\\bage\\b", "\\bsex of person\\b","diabetes")
-
 # Create a case-insensitive regex pattern
 search_pattern <- paste0("(?i)", paste(search_terms, collapse = "|"))
 
 # Add a column to the filtered_rows that identifies the matching search term
-kept_columns_df <- filtered_rows %>%
+kept_columns_df <- Possible_Variables %>%
   mutate(MatchingTerm = str_extract(tolower(Description), search_pattern)) %>%
-  filter(VariableNames %in% names(filtered_combined_data))
+  filter(VariableNames %in% names(filtered_bp_bb))
 
-# Group the results by the MatchingTerm and arrange them
-grouped_output <- kept_columns_df %>%
-  filter(!is.na(MatchingTerm)) %>%  # Ensure there are no NA values in MatchingTerm
-  arrange(MatchingTerm) %>%
-  select(MatchingTerm, VariableNames, Description)
-
-# Print the grouped output as a table using kable
-grouped_output %>%
-  kable(col.names = c("Matching Term", "Variable Name", "Description"),
-        caption = "Kept Variables and Their Descriptions Grouped by Matching Terms") %>%
-  print()
+print(kept_columns_df)
 
 group_counts <- kept_columns_df %>%
   filter(!is.na(MatchingTerm)) %>%
@@ -95,4 +83,22 @@ group_counts %>%
   kable(col.names = c("Matching Term", "Count"),
         caption = "Count of Entries for Each Matching Term") %>%
   print()
+
+# Group the results by the MatchingTerm and arrange them
+grouped_output <- kept_columns_df %>%
+  filter(!is.na(MatchingTerm)) %>%  # Ensure there are no NA values in MatchingTerm
+  arrange(MatchingTerm) %>%
+  select(MatchingTerm, VariableNames, Description)
+
+grouped_output %>%
+  kable(col.names = c("Matching Term", "Variable Name", "Description"),
+        caption = "Kept Variables and Their Descriptions Grouped by Matching Terms") %>%
+  print()
+```
+
+```{r}
+kept_columns <- kept_columns_df$VariableNames
+filtered_X_all_File_variables <- X_all_File_variables[, colnames(X_all_File_variables) %in% kept_columns]
+
+save(filtered_X_all_File_variables, file = "filtered_X_all_File_variables.RData")
 ```
