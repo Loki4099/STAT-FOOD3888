@@ -2,8 +2,12 @@
 title: "Variables"
 author: "mia"
 date: "2024-08-29"
-output:
+output: 
   html_document:
+    theme: flatly
+    toc: yes
+    toc_float:
+      collapsed: true
     code_folding: hide
 ---
 
@@ -104,6 +108,36 @@ merged_df <- merge(raw_bb, raw_bp, by = "ABSPID")
 columns_to_keep <- grouped_output$VariableNames
 columns_to_keep <- as.character(columns_to_keep)
 filtered_merged_df <- merged_df[, colnames(merged_df) %in% columns_to_keep]
+```
+# Type Change
+```{r}
+unique_counts <- sapply(filtered_merged_df, function(x) length(unique(x)))
 
-write.csv(filtered_merged_df, "MergedData.csv", row.names = FALSE)
+continuous_vars <- names(unique_counts[unique_counts > 17])
+factor_vars <- names(unique_counts[unique_counts <= 17])
+
+filtered_merged_df[continuous_vars] <- lapply(filtered_merged_df[continuous_vars], as.integer)
+filtered_merged_df[factor_vars] <- lapply(filtered_merged_df[factor_vars], as.factor)
+filtered_merged_df$ABSPID <- as.character(filtered_merged_df$ABSPID)
+summary(filtered_merged_df)
+```
+## Convert Specific Values (0, 8, 97) to Missing Values (NA) in Factor Variables
+```{r}
+magic_vals <- c(97, 8, 0)
+
+for (col in names(filtered_merged_df)) {
+  if (is.factor(filtered_merged_df[[col]])) {
+    filtered_merged_df[[col]] <- as.character(filtered_merged_df[[col]])
+    filtered_merged_df[[col]][filtered_merged_df[[col]] %in% as.character(magic_vals)] <- NA
+    filtered_merged_df[[col]] <- as.factor(filtered_merged_df[[col]])
+  }
+}
+
+str(filtered_merged_df)
+```
+## Drop "LEVELP" column
+```{r}
+filtered_merged_df <- filtered_merged_df[, !(names(filtered_merged_df) %in% "LEVELP")]
+summary(filtered_merged_df)
+write.csv(filtered_merged_df, "ResponseVariables_Cleaned.csv", row.names = FALSE)
 ```
