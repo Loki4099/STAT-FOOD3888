@@ -17,7 +17,7 @@ library(tidyr)
 library(dplyr)
 library(knitr)
 ```
-
+# Variable Selection
 ```{r, message=FALSE}
 raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
 raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
@@ -28,15 +28,16 @@ X_all_File_variables <- read_excel("ZIPallFiles/_all.File.variables.xlsx",
 X_all_File_variables <- X_all_File_variables %>%
   rename(
     Survey = `...1`,
-    Description = `...4`,
-    VariableNames = `...3`
+    Name = `...2`,
+    VariableNames = `...3`,
+    Description = `...4`
   ) %>%
-  filter(Survey == "Nutrition & Physical Activity Survey")
+  filter(Name %in% c("AHSnpa11bp", "AHSnpa11ba"))
 ```
 
 ```{r}
 # Define the search terms
-search_terms <- c("grain", "plasma glucose", "gender", "HbA1c", "\\bALT\\b", "GGT", "identifier", "BMI", "\\bage\\b", "\\bsex of person\\b", "diabetes")
+search_terms <- c("grain", "plasma", "glucose gender", "HbA1c", "\\bALT\\b", "GGT", "identifier", "BMI", "\\bage\\b", "\\bsex of person\\b", "diabetes")
 
 Possible_Variables <- X_all_File_variables %>%
   filter(grepl(paste(search_terms, collapse = "|"), Description, ignore.case = TRUE)) %>%
@@ -71,8 +72,6 @@ search_pattern <- paste0("(?i)", paste(search_terms, collapse = "|"))
 kept_columns_df <- Possible_Variables %>%
   mutate(MatchingTerm = str_extract(tolower(Description), search_pattern)) %>%
   filter(VariableNames %in% names(filtered_bp_bb))
-
-print(kept_columns_df)
 ```
 
 ```{r}
@@ -97,4 +96,8 @@ grouped_output %>%
   kable(col.names = c("Matching Term", "Variable Name", "Description"),
         caption = "Kept Variables and Their Descriptions Grouped by Matching Terms") %>%
   print()
+```
+# Merging Data using ABSPID
+```{r}
+merged_df <- merge(raw_bb, raw_bp, by = "ABSPID")
 ```
