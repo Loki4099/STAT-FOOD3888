@@ -85,8 +85,9 @@ group_counts %>%
   kable(col.names = c("Matching Term", "Count"),
         caption = "Count of Entries for Each Matching Term") %>%
   print()
+```
 
-# Group the results by the MatchingTerm and arrange them
+```{r}
 grouped_output <- kept_columns_df %>%
   filter(!is.na(MatchingTerm)) %>%  # Ensure there are no NA values in MatchingTerm
   arrange(MatchingTerm) %>%
@@ -100,4 +101,9 @@ grouped_output %>%
 # Merging Data using ABSPID
 ```{r}
 merged_df <- merge(raw_bb, raw_bp, by = "ABSPID")
+columns_to_keep <- grouped_output$VariableNames
+columns_to_keep <- as.character(columns_to_keep)
+filtered_merged_df <- merged_df[, colnames(merged_df) %in% columns_to_keep]
+
+write.csv(filtered_merged_df, "MergedData.csv", row.names = FALSE)
 ```
