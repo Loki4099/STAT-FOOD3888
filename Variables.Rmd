@@ -30,7 +30,8 @@ X_all_File_variables <- X_all_File_variables %>%
     Survey = `...1`,
     Description = `...4`,
     VariableNames = `...3`
-  )
+  ) %>%
+  filter(Survey == "Nutrition & Physical Activity Survey")
 ```
 
 ```{r}
@@ -72,7 +73,9 @@ kept_columns_df <- Possible_Variables %>%
   filter(VariableNames %in% names(filtered_bp_bb))
 
 print(kept_columns_df)
+```
 
+```{r}
 group_counts <- kept_columns_df %>%
   filter(!is.na(MatchingTerm)) %>%
   group_by(MatchingTerm) %>%
@@ -94,11 +97,4 @@ grouped_output %>%
   kable(col.names = c("Matching Term", "Variable Name", "Description"),
         caption = "Kept Variables and Their Descriptions Grouped by Matching Terms") %>%
   print()
-```
-
-```{r}
-kept_columns <- kept_columns_df$VariableNames
-filtered_X_all_File_variables <- X_all_File_variables[, colnames(X_all_File_variables) %in% kept_columns]
-
-save(filtered_X_all_File_variables, file = "filtered_X_all_File_variables.RData")
 ```
