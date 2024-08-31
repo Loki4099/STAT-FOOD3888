@@ -111,15 +111,18 @@ filtered_merged_df <- merged_df[, colnames(merged_df) %in% columns_to_keep]
 ```
 # Type Change
 ```{r}
+filtered_merged_df$ABSPID <- as.character(filtered_merged_df$ABSPID)
+
 unique_counts <- sapply(filtered_merged_df, function(x) length(unique(x)))
 
-continuous_vars <- names(unique_counts[unique_counts > 17])
+continuous_vars <- names(unique_counts[unique_counts > 17 & unique_counts < 1000])
 factor_vars <- names(unique_counts[unique_counts <= 17])
 
 filtered_merged_df[continuous_vars] <- lapply(filtered_merged_df[continuous_vars], as.integer)
+
 filtered_merged_df[factor_vars] <- lapply(filtered_merged_df[factor_vars], as.factor)
+
 filtered_merged_df$ABSPID <- as.character(filtered_merged_df$ABSPID)
-summary(filtered_merged_df)
 ```
 ## Convert Specific Values (0, 8, 97) to Missing Values (NA) in Factor Variables
 ```{r}
@@ -139,5 +142,6 @@ str(filtered_merged_df)
 ```{r}
 filtered_merged_df <- filtered_merged_df[, !(names(filtered_merged_df) %in% "LEVELP")]
 summary(filtered_merged_df)
+
 write.csv(filtered_merged_df, "ResponseVariables_Cleaned.csv", row.names = FALSE)
 ```
