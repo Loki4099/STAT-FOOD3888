@@ -126,7 +126,7 @@ filtered_merged_df$ABSPID <- as.character(filtered_merged_df$ABSPID)
 ```
 ## Convert Specific Values (0, 8, 97) to Missing Values (NA) in Factor Variables
 ```{r}
-magic_vals <- c(97, 8, 0)
+magic_vals <- c(99, 98, 97, 8, 0)
 
 for (col in names(filtered_merged_df)) {
   if (is.factor(filtered_merged_df[[col]])) {
@@ -140,8 +140,11 @@ str(filtered_merged_df)
 ```
 ## Drop "LEVELP" column
 ```{r}
-filtered_merged_df <- filtered_merged_df[, !(names(filtered_merged_df) %in% "LEVELP")]
-summary(filtered_merged_df)
+# Drop the columns LEVELP and AGDBBC
+filtered_merged_df <- filtered_merged_df[, !(names(filtered_merged_df) %in% c("ABSHID","ABSFID", "ABSLFID", "ABSSID", "ABSBID","LEVELP","ALTNTR","DIABFPGE","DIABPRVE","DIAHBRSK","DIAHMRSK","GGTNTR","GLUCFPD","AGDBBC","DIABBC","DIABQ01A"))]
 
-write.csv(filtered_merged_df, "ResponseVariables_Cleaned.csv", row.names = FALSE)
+
+str(filtered_merged_df)
+data <- filtered_merged_df
+save(data, file = "ResponseVariables_Cleaned.RData")
 ```
