@@ -40,7 +40,7 @@ bb_bp_filtered <- bp_bb %>% #variable selections
   select(
     ABSPID, HYPBC, SYSTOL, DIASTOL, 
     AGEC, SEX, BMISC,
-    EXLWTBC, EXLWMBC, EXLWVBC, 
+    EXREGUIC, EXREGUID,
     ENERGYT1, ENERGYF1, ENERGYT2, ENERGYF2, 
     ENRGYT1, ENRGYF1, ENRGYT2, ENRGYF2, 
     FIBRET1, FIBREF1, FIBRES1, 
@@ -48,7 +48,9 @@ bb_bp_filtered <- bp_bb %>% #variable selections
   ) %>% #convert sex and hypbc to factor
   mutate(
     SEX = as.factor(SEX),
-    HYPBC = as.factor(HYPBC)
+    HYPBC = as.factor(HYPBC),
+    EXREGUIC = as.factor(EXREGUIC),
+    EXREGUID = as.factor(EXREGUID)
   ) %>% #set values as NAs, different columns has different values for na
   mutate(across(where(is.numeric), ~ case_when(
     . %in% c(9996, 9999) ~ NA_real_,
@@ -57,7 +59,9 @@ bb_bp_filtered <- bp_bb %>% #variable selections
     TRUE ~ .
   ))) %>% #remove rows if has na
   drop_na()
-
+#HYPBC remove == 1,2,3
+#FIBRES1 set greater than 9 is na
+#EXREGUID reove == 0,9
 summary(bb_bp_filtered)
 ```
 
@@ -74,6 +78,20 @@ ggplot(bb_bp_long, aes(x = Variable, y = Value)) +
        x = "Variable",
        y = "Value")
 ```
+```{r}
+bb_bp_long <- bb_bp_filtered %>%
+  select(FIBRES1, FIBRES2) %>%
+  pivot_longer(cols = everything(), names_to = "Variable", values_to = "Value")
+
+# Create the boxplot
+ggplot(bb_bp_long, aes(x = Variable, y = Value)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Boxplot of Selected Variables",
+       x = "Variable",
+       y = "Value")
+```
+
 ```{r}
 new <- bb_bp_filtered
 save(new, file = "NewVariables.RData")
