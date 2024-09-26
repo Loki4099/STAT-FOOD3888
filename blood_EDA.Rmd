@@ -1,0 +1,318 @@
+---
+title: "EDA_bloodpresure"
+author: "Loki"
+date: "2024-09-11"
+output: html_document
+---
+
+
+```{r,setup, include=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+```
+
+
+
+```{r read_in_raw_data}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+raw_bsp<-read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+```
+
+```{r}
+bsp_data<-raw_bsp %>%
+    select(
+    ABSHID, SYSTOL, DIASTOL, PHDKGW2,PHDCMH2,
+    AGEEC, SEX, BMISC,
+    EXREGUIC, EXREGUID,DURACSF,DURSACSF,
+    ENERGYT1, ENERGYF1, ENERGYT2, ENERGYF2, 
+    ENRGYT1, ENRGYF1, ENRGYT2, ENRGYF2, 
+    FIBRET1, FIBREF1, SABDYMS,  
+    FIBRET2, FIBREF2
+  )
+
+head(bsp_data)
+```
+
+```{r}
+# Merge the datasets on ABSHID and ABSPID
+merged_data <- merge(raw_bp, raw_bb, by = c("ABSPID"))
+
+selected_variables <- merged_data %>%
+  select(
+    ABSPID, HYPBC, SYSTOL, DIASTOL, PHDKGWBC,PHDCMHBC,
+    AGEC, SEX, BMISC,
+    EXREGUIC, EXREGUID,DURACSF,DURSACSF,
+    ENERGYT1, ENERGYF1, ENERGYT2, ENERGYF2, 
+    ENRGYT1, ENRGYF1, ENRGYT2, ENRGYF2, 
+    FIBRET1, FIBREF1, SABDYMS,  
+    FIBRET2, FIBREF2
+  )
+
+# View the first few rows of the merged dataset
+head(selected_variables)
+```
+
+```{r}
+summary(selected_variables)
+```
+```{r}
+# Replace specific values with NA for a given dataset (assume the dataset is named df)
+
+correct_data <- selected_variables %>%
+  mutate(
+    # Biophysical Measures  
+    SYSTOL = na_if(SYSTOL, 998) %>% na_if(999)%>% na_if(0),
+    DIASTOL = na_if(DIASTOL, 998) %>% na_if(999)%>% na_if(0),
+    
+    # Biophysical Measures
+    #BMR = na_if(BMR, 99998),
+    BMISC = na_if(BMISC, 0) %>% na_if(98) %>% na_if(99),
+    PHDKGWBC = na_if(PHDKGWBC, 0) %>% na_if(997) %>% na_if(998) %>% na_if(999),
+    PHDCMHBC = na_if(PHDCMHBC, 0) %>% na_if(997) %>% na_if(998) %>% na_if(999),
+    
+    # Socio-Demographic Factors
+    #INCDEC = na_if(INCDEC, 0) %>% na_if(98) %>% na_if(99)
+    SABDYMS = na_if(SABDYMS, 0) %>% na_if(8) %>% na_if(9),
+    
+    # Exercise Measures
+    EXREGUIC = na_if(EXREGUIC, 0) %>% na_if(9),
+    EXREGUID = na_if(EXREGUID, 0) %>% na_if(9),
+    DURACSF = na_if(DURACSF, 0) %>% na_if(8),
+    DURSACSF = na_if(DURSACSF, 0) %>% na_if(8),
+  )
+```
+
+```{r}
+summary(correct_data)
+```
+```{r}
+str(correct_data)
+```
+
+```{r}
+correct_data$HYPBC <- as.factor(correct_data$HYPBC)
+#correct_data$BPCAT <- as.factor(correct_data$BPCAT)
+#correct_data$SMKDAILY <- as.factor(correct_data$SMKDAILY)
+correct_data$EXREGUIC <- as.factor(correct_data$EXREGUIC)
+correct_data$EXREGUID = as.factor(correct_data$EXREGUID)
+correct_data$SEX <- as.factor(correct_data$SEX)
+#correct_data$INCDEC <- as.factor(correct_data$INCDEC)
+correct_data$DURACSF <- as.factor(correct_data$DURACSF)
+correct_data$DURSACSF <- as.factor(correct_data$DURSACSF)
+correct_data$SABDYMS <- as.factor(correct_data$SABDYMS)
+```
+
+
+```{r}
+
+correct_data <- correct_data %>%
+  # Create average energy and fibre variables
+  mutate(
+    ENERGYT = (ENERGYT1 + ENERGYT2) / 2,
+    ENERGYF = (ENERGYF1 + ENERGYF2) / 2,
+    ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
+    ENRGYF = (ENRGYF1 + ENRGYF2) / 2,
+    FIBRET = (FIBRET1 + FIBRET2) / 2,
+    FIBREF = (FIBREF1 + FIBREF2) / 2
+  ) %>%
+  # Create proportion variables
+  mutate(
+    FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,  # Proportion of dietary fibre (total)
+    FIBREFP = (ENERGYF - ENRGYF) / ENERGYF * 100   # Proportion of dietary fibre (food)
+  ) %>%
+mutate(Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1, # and or condition
+    TRUE ~ 0
+  ))) %>%
+  mutate(BP_Category = as.factor(case_when(
+    SYSTOL < 120 & DIASTOL < 80 ~ 0,       # Normal BP
+    SYSTOL >= 120 & SYSTOL <= 129 & DIASTOL < 80 ~ 1,  # Elevated BP
+    TRUE ~ 2                               # Other cases
+  )))
+
+# View the enhanced data to check the new variables
+head(correct_data)
+```
+```{r}
+str(correct_data)
+```
+
+
+```{r}
+#load library
+library(naniar)
+library(knitr)
+
+#summarize missing data
+miss_summary <- miss_var_summary(correct_data)
+kable(miss_summary, digits = 2, format = "html")
+
+#Visualize missing data
+# Filter variables with missing value percentage greater than 0%
+missing_data <- miss_var_summary(correct_data)
+missing_data_filtered <- missing_data  #%>% filter(pct_miss > 0)
+
+# Create a plot with only the filtered variables
+ggplot(missing_data_filtered, aes(x = reorder(variable, n_miss), y = n_miss)) +
+  geom_segment(aes(xend = reorder(variable, n_miss), yend = 0), color = "blue", size = 1.2) +  # Add vertical lines from the y-axis
+  geom_point(color = "red", size = 2) +  # Highlight points in red
+  coord_flip() +  # Flip coordinates for better readability
+  theme_minimal() +
+  labs(title = "Missing Data by Variable (Percentage > 0%)",
+       y = "Number of Missing Values",
+       x = "Variables") +
+  theme(axis.text.y = element_text(size = 8, hjust = 1))  # Adjust label size
+```
+```{r}
+plot_categorical_distribution <- function(data) {
+  categorical_vars <- data %>%
+    select(where(is.factor) | where(is.character)) %>%
+    select(-ABSPID)
+  
+  for (var in names(categorical_vars)) {
+    non_na_data <- data %>%
+      filter(!is.na(.data[[var]]))
+    
+    if (nrow(non_na_data) == 0) next
+    
+    p <- ggplot(non_na_data, aes(x = .data[[var]])) +
+      geom_bar(aes(y = (..count..) / sum(..count..), fill = .data[[var]]), color = "black") +
+      scale_fill_brewer(palette = "Set3") + 
+      labs(title = paste("Proportion of Categories in", var), 
+           x = "Category", 
+           y = "Proportion") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+    
+    print(p)
+  }
+}
+
+plot_categorical_distribution(correct_data)
+```
+```{r,fig.height=6}
+#Checking for outlier
+
+numerical_vars <- correct_data %>%
+  select_if(is.numeric) 
+
+# Create boxplots for each numerical variable to check for outliers
+par(mfrow = c(3, 3))  # Adjust the layout to fit multiple plots
+for (var in names(numerical_vars)) {
+  boxplot(numerical_vars[[var]], 
+          main = var, 
+          ylab = var, 
+          col = "lightblue",        # Color for the box
+          border = "darkblue",      # Color for the border of the box
+          outcol = "red",           # Color for the outliers
+          pch = 19                  # Solid circle for outlier points
+  )
+}
+```
+
+
+```{r}
+save(correct_data,file ="Correct Data.Rdata")
+```
+
+```{r}
+filtered_data <- correct_data %>%
+  filter(AGEC >= 18, HYPBC == 5, SABDYMS!=4) 
+
+filtered_data <- na.omit(filtered_data, subset = "BMISC")
+```
+
+```{r}
+str(filtered_data)
+```
+```{r}
+unique_data <- filtered_data %>%
+  select(-ABSPID) %>%
+  distinct()
+
+str(unique_data)
+```
+
+```{r}
+#load library
+library(naniar)
+library(knitr)
+
+#summarize missing data
+miss_summary <- miss_var_summary(filtered_data)
+kable(miss_summary, digits = 2, format = "html")
+
+#Visualize missing data
+# Filter variables with missing value percentage greater than 0%
+missing_data <- miss_var_summary(filtered_data)
+missing_data_filtered <- missing_data  #%>% filter(pct_miss > 0)
+
+# Create a plot with only the filtered variables
+ggplot(missing_data_filtered, aes(x = reorder(variable, n_miss), y = n_miss)) +
+  geom_segment(aes(xend = reorder(variable, n_miss), yend = 0), color = "blue", size = 1.2) +  # Add vertical lines from the y-axis
+  geom_point(color = "red", size = 2) +  # Highlight points in red
+  coord_flip() +  # Flip coordinates for better readability
+  theme_minimal() +
+  labs(title = "Missing Data by Variable (Percentage > 0%)",
+       y = "Number of Missing Values",
+       x = "Variables") +
+  theme(axis.text.y = element_text(size = 8, hjust = 1))  # Adjust label size
+```
+
+
+```{r}
+save(filtered_data,file ="Filtered Data.Rdata")
+```
+
+```{r}
+library(ggplot2)
+library(reshape2)
+library(ggcorrplot)
+library(dplyr)
+
+# Assuming your data is loaded into a data frame called 'correct_data'
+
+# Select the numeric variables you want to include in the correlation heatmap
+# In your case, they would include variables like SYSTOL, DIASTOL, BMR, BMISC, ALCT1, ALCT2, SLPTIME
+numeric_vars <- filtered_data %>%
+  select(SYSTOL, DIASTOL,FIBRET,FIBREF,FIBRETP,FIBREFP,AGEC,BMISC)
+
+# Compute the correlation matrix
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Create a heatmap using ggcorrplot
+ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+           title = "Correlation Heatmap of Selected Variables", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 12, lab_size = 4)
+```
+```{r}
+library(ggplot2)
+library(reshape2)
+library(ggcorrplot)
+library(dplyr)
+
+# Assuming your data is loaded into a data frame called 'correct_data'
+
+# Select the numeric variables you want to include in the correlation heatmap
+# In your case, they would include variables like SYSTOL, DIASTOL, BMR, BMISC, ALCT1, ALCT2, SLPTIME
+numeric_vars <- filtered_data %>%
+  select(SYSTOL, DIASTOL,ENERGYT1,ENERGYT2,ENRGYT1,ENRGYT2)
+
+# Compute the correlation matrix
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Create a heatmap using ggcorrplot
+ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+           title = "Correlation Heatmap of Selected Variables", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 12, lab_size = 4)
+```
+
