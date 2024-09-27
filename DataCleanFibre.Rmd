@@ -26,9 +26,10 @@ bp_bb <- inner_join(raw_bp, raw_bb, by = "ABSPID")
 raw_bsp <- read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
 raw_bcn <- read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
 raw_bhh <- read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
-bsp_bcn <- inner_join(raw_bsp, raw_bcn, by = "ABSHID")
-bsp_bcn_bhh <- inner_join(bsp_bcn,raw_bhh,by="ABSHID")
-bsp_bcn_bhh <- bsp_bcn_bhh %>%
+
+merged_data1 <- merge(raw_bsp, raw_bcn, by = c("ABSGID","ABSHID"))
+merged_data2<- merge(merged_data1, raw_bhh,by = c("ABSHID"))
+bsp_bcn_bhh <- merged_data2 %>%
   rename(ABSPID = ABSHID,AGEC =AGEEC)
 ```
 
