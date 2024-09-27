@@ -26,9 +26,9 @@ load("FibreData.RData")
 FibreData <- na.omit(FibreData)
 ```
 
-```{r all heatmap}
+```{r all heatmap2}
 corr_matrix <- FibreData %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER) %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
@@ -69,9 +69,9 @@ load("FibreDataInd.RData")
 FibreDataInd <- na.omit(FibreDataInd)
 ```
 
-```{r ind heatmap}
+```{r ind heatmap2}
 corr_matrix <- FibreDataInd %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER) %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
@@ -112,9 +112,9 @@ load("FibreDataNon.RData")
 FibreDataNon <- na.omit(FibreDataNon)
 ```
 
-```{r non heatmap}
+```{r non heatmap2}
 corr_matrix <- FibreDataNon %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER) %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
