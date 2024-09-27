@@ -59,8 +59,11 @@ Data1 <- bp_bb %>%
     FIBRPER = (FIBRPER1 + FIBRPER2)/2
     ) %>%
   mutate(
-    FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100
-  ) %>%
+    FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,
+    Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1,
+    TRUE ~ 0
+  ))) %>%
   filter(
     AGEC >= 18, 
     HYPBC == 5,
@@ -70,7 +73,7 @@ Data1 <- bp_bb %>%
          SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRET, FIBRETP, FIBRPER)
+         FIBRET, FIBRETP, FIBRPER,Hypertension)
 
 summary(Data1)
 ```
@@ -105,8 +108,10 @@ Data2 <- bsp_bcn_bhh %>%
     FIBRPER = (FIBRPER1 + FIBRPER2)/2
     ) %>%
   mutate(
-    FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100
-    ) %>%
+    FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,
+    Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1,
+    TRUE ~ 0))) %>%
   filter(
     AGEC >= 18, 
     !ICD10ME %in% c(7, 20),
@@ -114,7 +119,7 @@ Data2 <- bsp_bcn_bhh %>%
   select(ABSPID, SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRET, FIBRETP, FIBRPER)
+         FIBRET, FIBRETP, FIBRPER,Hypertension)
 
 summary(Data2)
 ```

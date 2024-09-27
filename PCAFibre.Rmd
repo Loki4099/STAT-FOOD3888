@@ -1,0 +1,77 @@
+---
+title: "PCA"
+author: "mia"
+date: "2024-09-27"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(ggcorrplot)
+library(factoextra)
+```
+
+```{r}
+load("FibreData.RData")
+```
+
+```{r, HeatMap}
+num_vars <- FibreData %>% 
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER)
+
+num_vars_clean <- num_vars %>% 
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+corr_matrix <- cor(num_vars_clean, use = "complete.obs")
+
+ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+           title = "Correlation Heatmap of Selected Variables", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 12, lab_size = 4)
+```
+
+```{r, PCA}
+df <- FibreData
+
+data_numeric <- df[, c("AGEC", "BMISC", "POTAST", "SODIUMT","FIBRPER","FIBRET")]
+
+data_clean <- na.omit(data_numeric)
+
+data_scaled <- scale(data_clean)
+
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+```{r}
+df <- FibreData
+data_numeric <- df[, c("AGEC", "BMISC", "POTAST", "SODIUMT", "FIBRPER", "FIBRET")]
+data_clean <- na.omit(data_numeric)
+
+df_clean <- df[complete.cases(data_numeric), ]
+
+data_scaled <- scale(data_clean)
+
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+df_pca <- cbind(df_clean, pca_result$x[, 1:6])
+
+df_pca$SOCIAL <- as.factor(df_pca$SOCIAL)
+df_pca$SEX <- as.factor(df_pca$SEX)
+
+r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6, 
+         data = df_pca, family = binomial())
+
+summary(r)
+```
+
