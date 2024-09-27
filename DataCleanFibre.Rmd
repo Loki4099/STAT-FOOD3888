@@ -14,6 +14,8 @@ library(stringr)
 library(tidyr)     
 library(dplyr)
 library(knitr)
+library(ggplot2)
+library(factoextra)
 ```
 
 ```{r}
@@ -33,13 +35,13 @@ bsp_bcn_bhh <- bsp_bcn_bhh %>%
 ```{r}
 Data1 <- bp_bb %>%
   select(
-    ABSPID, HYPBC,
-    AGEC, SEX, BMISC, SYSTOL, DIASTOL,
-    POTAST1, POTAST2, SODIUMT1, SODIUMT2,
-    ENERGYT1, ENERGYF1, ENERGYT2, ENERGYF2, 
-    ENRGYT1, ENRGYF1, ENRGYT2, ENRGYF2, 
-    FIBRET1, FIBREF1, SABDYMS,  
-    FIBRET2, FIBREF2, SF2SA1QN
+    ABSPID, HYPBC, SABDYMS, SF2SA1QN, AGEC, SEX, BMISC, SYSTOL, DIASTOL,
+    POTAST1, POTAST2, 
+    SODIUMT1, SODIUMT2,
+    ENERGYT1, ENERGYT2, 
+    ENRGYT1, ENRGYT2, 
+    FIBRET1, FIBRET2, 
+    FIBRPER1, FIBRPER2
   ) %>%
   rename(SOCIAL = SF2SA1QN) %>%
   mutate(
@@ -53,7 +55,8 @@ Data1 <- bp_bb %>%
     SODIUMT = (SODIUMT1 + SODIUMT2) / 2,
     ENERGYT = (ENERGYT1 + ENERGYT2) / 2,
     ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
-    FIBRET = (FIBRET1 + FIBRET2) / 2
+    FIBRET = (FIBRET1 + FIBRET2) / 2,
+    FIBRPER = (FIBRPER1 + FIBRPER2)/2
     ) %>%
   mutate(
     FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100
@@ -67,7 +70,7 @@ Data1 <- bp_bb %>%
          SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRETP)
+         FIBRET, FIBRETP, FIBRPER)
 
 summary(Data1)
 ```
@@ -75,21 +78,22 @@ summary(Data1)
 ```{r}
 Data2 <- bsp_bcn_bhh %>%
   select(
-    ABSPID,
-    AGEC, SEX, BMISC, SYSTOL, DIASTOL,
-    POTAST1, POTAST2, SODIUMT1, SODIUMT2,
-    ENERGYT1, ENERGYF1, ENERGYT2, ENERGYF2, 
-    ENRGYT1, ENRGYF1, ENRGYT2, ENRGYF2, 
+    ABSPID, AGEC, SEX, BMISC,SYSTOL, DIASTOL,
+    POTAST1, POTAST2, 
+    SODIUMT1, SODIUMT2,
+    ENERGYT1, ENERGYT2, 
+    ENRGYT1, ENRGYT2, 
     FIBRET1, FIBREF1, SABDYMS,  
     FIBRET2, FIBREF2,
     ICD10ME, SF2SA1DB,
-    DURACSF
+    DURACSF, FIBRPER1, FIBRPER2
   ) %>%
   rename(SOCIAL = SF2SA1DB) %>%
   mutate(
     ICD10ME = as.factor(ICD10ME),
     SEX = as.factor(SEX),
     SOCIAL = as.factor(SOCIAL),
+    SABDYMS = as.factor(SABDYMS),
     BMISC = na_if(na_if(BMISC, 99), 98),
     SYSTOL = na_if(na_if(na_if(SYSTOL,0),998),999),
     DIASTOL = na_if(na_if(na_if(DIASTOL,0),998),999),
@@ -97,19 +101,26 @@ Data2 <- bsp_bcn_bhh %>%
     SODIUMT = (SODIUMT1 + SODIUMT2) / 2,
     ENERGYT = (ENERGYT1 + ENERGYT2) / 2,
     ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
-    FIBRET = (FIBRET1 + FIBRET2) / 2
+    FIBRET = (FIBRET1 + FIBRET2) / 2,
+    FIBRPER = (FIBRPER1 + FIBRPER2)/2
     ) %>%
   mutate(
     FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100
     ) %>%
   filter(
     AGEC >= 18, 
-    !ICD10ME %in% c(7, 20)) %>%
-  select(ABSPID,SOCIAL,
-         AGEC, SEX, BMISC,
+    !ICD10ME %in% c(7, 20),
+    SABDYMS != 4) %>%
+  select(ABSPID, SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRETP)
+         FIBRET, FIBRETP, FIBRPER)
 
 summary(Data2)
+```
+
+```{r}
+FibreData <- bind_rows(Data1,Data2)
+summary(FibreData)
+save(FibreData, file = "FibreData.RData")
 ```
