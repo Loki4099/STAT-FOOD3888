@@ -128,4 +128,10 @@ summary(Data2)
 FibreData <- bind_rows(Data1,Data2)
 summary(FibreData)
 save(FibreData, file = "FibreData.RData")
+
+FibreDataNon <- Data1
+save(FibreDataNon, file ="FibreDataNon.RData")
+
+FibreDataInd <- Data2
+save(FibreDataInd, file ="FibreDataInd.RData")
 ```

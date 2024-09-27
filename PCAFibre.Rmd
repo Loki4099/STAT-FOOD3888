@@ -2,9 +2,11 @@
 title: "PCA"
 author: "mia"
 date: "2024-09-27"
-output: html_document
+output:
+  html_document:
+    code_folding: hide
 ---
-```{r}
+```{r, message=FALSE}
 library(tidyverse)
 library(here)      
 library(readxl)    
@@ -18,28 +20,69 @@ library(factoextra)
 library(ggcorrplot)
 library(factoextra)
 ```
-
-```{r}
+# With Indigious
+```{r all import}
 load("FibreData.RData")
+FibreData <- na.omit(FibreData)
 ```
 
-```{r, HeatMap}
-num_vars <- FibreData %>% 
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER)
-
-num_vars_clean <- num_vars %>% 
-  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
-
-corr_matrix <- cor(num_vars_clean, use = "complete.obs")
+```{r all heatmap}
+corr_matrix <- FibreData %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
 
 ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
-           title = "Correlation Heatmap of Selected Variables", 
+           title = "Correlation Heatmap for ALL", 
            colors = c("blue", "white", "red"),
-           tl.cex = 12, lab_size = 4)
+           tl.cex = 12, lab_size = 4) + theme(legend.position = "none")  
 ```
 
-```{r, PCA}
-df <- FibreData
+```{r all pca}
+data_clean <- FibreData %>%
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET)
+
+pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+```{r all regression}
+all_scaled <- FibreData %>%
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET) %>%
+  scale()
+
+df_pca <- FibreData %>%
+  mutate(SOCIAL = as.factor(SOCIAL), 
+         SEX = as.factor(SEX)) %>%
+  bind_cols(prcomp(all_scaled, center = TRUE, scale. = TRUE)$x)
+
+r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6, 
+         data = df_pca, family = binomial())
+
+summary(r)
+```
+# Indegious Data
+```{r ind import}
+load("FibreDataInd.RData")
+FibreDataInd <- na.omit(FibreDataInd)
+```
+
+```{r ind heatmap}
+corr_matrix <- FibreDataInd %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+           title = "Correlation Heatmap for ALL", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 12, lab_size = 4) + theme(legend.position = "none")  
+```
+
+```{r ind pca}
+df <- na.omit(FibreDataInd)
 
 data_numeric <- df[, c("AGEC", "BMISC", "POTAST", "SODIUMT","FIBRPER","FIBRET")]
 
@@ -53,10 +96,9 @@ pcaResult <- as.data.frame(pca_result$rotation)
 pcaResult
 ```
 
-```{r}
-df <- FibreData
+```{r ind regression}
+df <- na.omit(FibreDataInd)
 data_numeric <- df[, c("AGEC", "BMISC", "POTAST", "SODIUMT", "FIBRPER", "FIBRET")]
-data_clean <- na.omit(data_numeric)
 
 df_clean <- df[complete.cases(data_numeric), ]
 
@@ -74,4 +116,56 @@ r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6,
 
 summary(r)
 ```
+# Without Indegious
+```{r non import}
+load("FibreDataNon.RData")
+```
 
+```{r non heatmap}
+num_vars <- FibreDataNon %>% 
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRETP, FIBRPER)
+
+num_vars_clean <- num_vars %>% 
+  mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+corr_matrix <- cor(num_vars_clean, use = "complete.obs")
+
+ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+           title = "Correlation Heatmap for Not Indegious", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 12, lab_size = 4)+ theme(legend.position = "none")
+```
+
+```{r non pca}
+df <- na.omit(FibreDataNon)
+
+data_numeric <- df[, c("AGEC", "BMISC", "POTAST", "SODIUMT","FIBRPER","FIBRET")]
+
+data_scaled <- scale(data_numeric)
+
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+```{r non regression}
+df <- na.omit(FibreDataNon)
+data_numeric <- df[, c("AGEC", "BMISC", "POTAST", "SODIUMT", "FIBRPER", "FIBRET")]
+
+df_clean <- df[complete.cases(data_numeric), ]
+
+data_scaled <- scale(data_clean)
+
+pca_result <- prcomp(data_scaled, center = TRUE, scale. = TRUE)
+
+df_pca <- cbind(df_clean, pca_result$x[, 1:6])
+
+df_pca$SOCIAL <- as.factor(df_pca$SOCIAL)
+df_pca$SEX <- as.factor(df_pca$SEX)
+
+r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6, 
+         data = df_pca, family = binomial())
+
+summary(r)
+```
