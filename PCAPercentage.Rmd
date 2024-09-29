@@ -1,0 +1,150 @@
+---
+title: "PCA"
+author: "mia"
+date: "2024-09-29"
+output:
+  html_document:
+    code_folding: hide
+---
+```{r, message=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(ggcorrplot)
+library(factoextra)
+```
+# With Indigious
+```{r all import}
+load("PercentageData.RData")
+PerData <- na.omit(PerData)
+```
+
+```{r all heatmap2}
+corr_matrix <- PerData %>%
+  select(where(is.numeric)) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, lab = TRUE, 
+           title = "Correlation Heatmap for ALL", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 4, lab_size = 1) + theme(legend.position = "none")  
+```
+
+```{r all pca}
+data_clean <- PerData %>%
+  select(where(is.numeric))
+
+pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+```{r all regression}
+all_scaled <- PerData %>%
+  select(where(is.numeric)) %>%
+  scale()
+
+df_pca <- PerData %>%
+  mutate(SOCIAL = as.factor(SOCIAL), 
+         SEX = as.factor(SEX)) %>%
+  bind_cols(prcomp(all_scaled, center = TRUE, scale. = TRUE)$x)
+
+# r <- glm(Hypertension ~ SOCIAL + ., data = df_pca, family = binomial())
+
+# summary(r)
+```
+# Indegious Data
+```{r ind import}
+load("PercentageDataInd.RData")
+FibreDataInd <- na.omit(PerDataInd)
+```
+
+```{r ind heatmap2}
+corr_matrix <- PerDataInd %>%
+  select(where(is.numeric)) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, lab = TRUE, 
+           title = "Correlation Heatmap for IND", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 4, lab_size = 1) + theme(legend.position = "none")  
+```
+
+```{r ind pca}
+data_clean <- PerDataInd %>%
+  select(where(is.numeric)) %>% na.omit()
+
+pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+```{r ind regression}
+all_scaled <- PerDataInd %>%
+  select(where(is.numeric)) %>%
+  scale()
+
+df_pca <- PerDataInd %>%
+  mutate(SOCIAL = as.factor(SOCIAL), 
+         SEX = as.factor(SEX)) %>%
+  bind_cols(prcomp(all_scaled, center = TRUE, scale. = TRUE)$x)
+
+r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6, 
+         data = df_pca, family = binomial())
+
+summary(r)
+```
+# Without Indegious
+```{r non import}
+load("PercentageDataNon.RData")
+FibreDataNon <- na.omit(PerDataNon)
+```
+
+```{r non heatmap2}
+corr_matrix <- PerDataNon %>%
+  select(where(is.numeric)) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, lab = TRUE, 
+           title = "Correlation Heatmap for NON", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 4, lab_size = 1) + theme(legend.position = "none")  
+```
+
+```{r non pca}
+data_clean <- PerDataNon %>%
+  select(where(is.numeric))
+
+pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+```{r non regression}
+all_scaled <- FibreDataNon %>%
+  select(where(is.numeric)) %>%
+  scale()
+
+df_pca <- FibreDataNon %>%
+  mutate(SOCIAL = as.factor(SOCIAL), 
+         SEX = as.factor(SEX)) %>%
+  bind_cols(prcomp(all_scaled, center = TRUE, scale. = TRUE)$x)
+
+r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6, 
+         data = df_pca, family = binomial())
+
+summary(r)
+```
