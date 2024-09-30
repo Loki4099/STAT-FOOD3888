@@ -1,0 +1,317 @@
+---
+title: "Energe_Eda"
+author: "Loki"
+date: "2024-09-27"
+output: html_document
+---
+
+```{r,setup, include=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+```
+
+```{r read_in_raw_data}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+```
+
+```{r}
+# Merge the datasets on ABSHID and ABSPID
+merged_data <- merge(raw_bp, raw_bb, by = c("ABSPID"))
+
+selected_variables <- merged_data %>%
+  select(
+    ABSPID, HYPBC, SYSTOL, DIASTOL, 
+    AGEC, SEX, BMISC,SABDYMS,SF2SA1QN,
+    EXREGUIC, EXREGUID,
+    POTAST1, POTAST2, SODIUMT1, SODIUMT2,
+    PROPER1, FATPER1, LAPER1, ALAPER1, CHOPER1, 
+    SUGPER1, STARPER1, ALCPER1, SATPER1, TRANPER1, 
+    FIBRPER1, MONOPER1, POLYPER1,
+    PROPER2, FATPER2, LAPER2, ALAPER2, CHOPER2, 
+    SUGPER2, STARPER2, ALCPER2, SATPER2, TRANPER2, 
+    FIBRPER2, MONOPER2, POLYPER2
+  )
+
+# View the first few rows of the merged dataset
+summary(selected_variables)
+```
+
+```{r}
+# Replace specific values with NA for a given dataset (assume the dataset is named df)
+
+correct_data <- selected_variables %>%
+  mutate(
+    # Biophysical Measures  
+    SYSTOL = na_if(SYSTOL, 998) %>% na_if(999)%>% na_if(0),
+    DIASTOL = na_if(DIASTOL, 998) %>% na_if(999)%>% na_if(0),
+    
+    # Biophysical Measures
+    #BMR = na_if(BMR, 99998),
+    BMISC = na_if(BMISC, 0) %>% na_if(98) %>% na_if(99),
+    
+    # Socio-Demographic Factors
+    #INCDEC = na_if(INCDEC, 0) %>% na_if(98) %>% na_if(99)
+    SABDYMS = na_if(SABDYMS, 0) %>% na_if(8) %>% na_if(9),
+    
+    # Exercise Measures
+    EXREGUIC = na_if(EXREGUIC, 0) %>% na_if(9),
+    EXREGUID = na_if(EXREGUID, 0) %>% na_if(9),
+  )
+```
+
+```{r}
+correct_data$HYPBC <- as.factor(correct_data$HYPBC)
+#correct_data$BPCAT <- as.factor(correct_data$BPCAT)
+#correct_data$SMKDAILY <- as.factor(correct_data$SMKDAILY)
+correct_data$EXREGUIC <- as.factor(correct_data$EXREGUIC)
+correct_data$EXREGUID = as.factor(correct_data$EXREGUID)
+correct_data$SEX <- as.factor(correct_data$SEX)
+#correct_data$INCDEC <- as.factor(correct_data$INCDEC)
+correct_data$SABDYMS <- as.factor(correct_data$SABDYMS)
+correct_data$SOCIAL <- as.factor(correct_data$SF2SA1QN)
+```
+
+```{r}
+correct_data <- correct_data %>%
+  mutate(
+    PROPER = (PROPER1 + PROPER2) / 2,
+    FATPER = (FATPER1 + FATPER2) / 2,
+    LAPER = (LAPER1 + LAPER2) / 2,
+    ALAPER = (ALAPER1 + ALAPER2) / 2,
+    CHOPER = (CHOPER1 + CHOPER2) / 2,
+    SUGPER = (SUGPER1 + SUGPER2) / 2,
+    STARPER = (STARPER1 + STARPER2) / 2,
+    ALCPER = (ALCPER1 + ALCPER2) / 2,
+    SATPER = (SATPER1 + SATPER2) / 2,
+    TRANPER = (TRANPER1 + TRANPER2) / 2,
+    FIBRPER = (FIBRPER1 + FIBRPER2) / 2,
+    MONOPER = (MONOPER1 + MONOPER2) / 2,
+    POLYPER = (POLYPER1 + POLYPER2) / 2,
+    POTAST = (POTAST1 + POTAST2) / 2, 
+    SODIUMT = (SODIUMT1 + SODIUMT2) / 2,
+  ) %>%
+mutate(Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1, # and or condition
+    TRUE ~ 0
+  ))) 
+```
+
+```{r}
+filtered_data <- correct_data %>%
+  filter(AGEC >= 18, HYPBC == 5)  
+
+filtered_data <- na.omit(filtered_data, subset = "BMISC")
+```
+
+```{r}
+save(filtered_data,file ="Filtered Data.Rdata")
+```
+```{r}
+str(filtered_data)
+```
+```{r,fig.height==10}
+library(ggplot2)
+library(reshape2)
+library(ggcorrplot)
+
+numeric_vars <- filtered_data %>%
+  select(
+    SYSTOL, DIASTOL, PROPER, FATPER, LAPER, ALAPER, CHOPER, SUGPER,
+    STARPER, ALCPER, SATPER, TRANPER, FIBRPER, MONOPER, POLYPER
+  )
+
+# Compute the correlation matrix
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Create a heatmap using ggcorrplot
+p <- ggcorrplot(corr_matrix, method = "circle", lab = TRUE,
+                title = "Correlation Heatmap of Selected Variables for NON",
+                colors = c("blue", "white", "red"),
+                tl.cex = 14, lab_size = 5)
+p
+
+ggsave("heatmap_bp.png", plot = p, width = 12, height = 10, units = "in", dpi = 300)
+```
+
+```{r}
+train_variables <- filtered_data %>%
+  select(
+    AGEC, SEX, BMISC,
+    POTAST, POTAST, SODIUMT, SODIUMT,
+    PROPER, FATPER, LAPER, ALAPER, CHOPER, 
+    SUGPER, STARPER, ALCPER, SATPER, TRANPER, 
+    FIBRPER, MONOPER, POLYPER,
+  )
+```
+
+```{r}
+#load library
+library(naniar)
+library(knitr)
+
+#summarize missing data
+miss_summary <- miss_var_summary(filtered_data)
+kable(miss_summary, digits = 2, format = "html")
+
+#Visualize missing data
+# Filter variables with missing value percentage greater than 0%
+missing_data <- miss_var_summary(filtered_data)
+missing_data_filtered <- missing_data  #%>% filter(pct_miss > 0)
+
+# Create a plot with only the filtered variables
+ggplot(missing_data_filtered, aes(x = reorder(variable, n_miss), y = n_miss)) +
+  geom_segment(aes(xend = reorder(variable, n_miss), yend = 0), color = "blue", size = 1.2) +  # Add vertical lines from the y-axis
+  geom_point(color = "red", size = 2) +  # Highlight points in red
+  coord_flip() +  # Flip coordinates for better readability
+  theme_minimal() +
+  labs(title = "Missing Data by Variable (Percentage > 0%)",
+       y = "Number of Missing Values",
+       x = "Variables") +
+  theme(axis.text.y = element_text(size = 8, hjust = 1))  # Adjust label size
+```
+
+```{r}
+# 载入必要的库
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(caret)
+library(stats)  # 使用 glm() 和 prcomp()
+
+# 假定 filtered_data 和 train_variables 已经定义
+# 确保 'Hypertension' 是因子类型
+filtered_data$Hypertension <- as.factor(filtered_data$Hypertension)
+
+# 从 train_variables 中选择数值型变量进行 PCA，除去 'SEX'
+numeric_vars_for_pca <- train_variables %>% 
+  select_if(is.numeric)  
+
+# 标准化选择的数值型数据
+preProc <- preProcess(numeric_vars_for_pca, method = c("center", "scale"))
+X_scaled <- predict(preProc, numeric_vars_for_pca)
+
+# 主成分分析
+pca_result <- prcomp(X_scaled, scale. = TRUE)
+cum_var <- cumsum(pca_result$sdev^2 / sum(pca_result$sdev^2))
+num_components <- which(cum_var >= 0.95)[1]
+X_pca <- pca_result$x[, 1:num_components]
+
+# 将 PCA 结果转换为数据框
+X_pca_df <- as.data.frame(X_pca)
+colnames(X_pca_df) <- paste0("PCA", 1:ncol(X_pca_df))
+
+# 合并 PCA 结果、'Hypertension' 和 'SEX'
+data_pca <- cbind(Hypertension = filtered_data$Hypertension, SEX = filtered_data$SEX, SOCIAL = filtered_data$SOCIAL,X_pca_df)
+
+# 拟合 logistic 回归模型
+logistic_model <- glm(Hypertension ~ SEX + ., data = data_pca, family = binomial())
+
+# 输出模型摘要
+pca_result
+summary(logistic_model)
+```
+
+```{r}
+logistic_model <- glm(Hypertension ~ SEX+BMISC + AGEC + SOCIAL + POTAST + SODIUMT + PROPER + FATPER + LAPER + ALAPER + CHOPER + SUGPER +
+                      STARPER + ALCPER + SATPER + TRANPER + FIBRPER + MONOPER + POLYPER,
+                      data = filtered_data, family = binomial())
+summary(logistic_model)
+```
+```{r}
+load("Filtered Bsp.Rdata")
+```
+
+```{r}
+str(filtered_data)
+```
+
+```{r}
+Combined_Data <- bind_rows(filtered_data,filtered_bsp)
+```
+
+```{r}
+library(ggplot2)
+library(reshape2)
+library(ggcorrplot)
+
+numeric_vars <- Combined_Data %>%
+  select(
+    SYSTOL, DIASTOL, PROPER, FATPER, LAPER, ALAPER, CHOPER, SUGPER,
+    STARPER, ALCPER, SATPER, TRANPER, FIBRPER, MONOPER, POLYPER
+  )
+
+# Compute the correlation matrix
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Create a heatmap using ggcorrplot
+p <- ggcorrplot(corr_matrix, method = "circle", lab = TRUE,
+                title = "Correlation Heatmap of Selected Variables for All",
+                colors = c("blue", "white", "red"),
+                tl.cex = 14, lab_size = 5)
+p
+
+ggsave("heatmap_Combine.png", plot = p, width = 12, height = 10, units = "in", dpi = 300)
+```
+
+
+```{r}
+train_variables <- Combined_Data %>%
+  select(
+    AGEC, SEX, BMISC,
+    POTAST, POTAST, SODIUMT, SODIUMT,
+    PROPER, FATPER, LAPER, ALAPER, CHOPER, 
+    SUGPER, STARPER, ALCPER, SATPER, TRANPER, 
+    FIBRPER, MONOPER, POLYPER,
+  )
+```
+```{r}
+# 载入必要的库
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(caret)
+library(stats)  # 使用 glm() 和 prcomp()
+
+# 假定 filtered_data 和 train_variables 已经定义
+# 确保 'Hypertension' 是因子类型
+Combined_Data$Hypertension <- as.factor(Combined_Data$Hypertension)
+
+# 从 train_variables 中选择数值型变量进行 PCA，除去 'SEX'
+numeric_vars_for_pca <- train_variables %>% 
+  select_if(is.numeric)  
+
+# 标准化选择的数值型数据
+preProc <- preProcess(numeric_vars_for_pca, method = c("center", "scale"))
+X_scaled <- predict(preProc, numeric_vars_for_pca)
+
+# 主成分分析
+pca_result <- prcomp(X_scaled, scale. = TRUE)
+cum_var <- cumsum(pca_result$sdev^2 / sum(pca_result$sdev^2))
+num_components <- which(cum_var >= 0.95)[1]
+X_pca <- pca_result$x[, 1:num_components]
+
+# 将 PCA 结果转换为数据框
+X_pca_df <- as.data.frame(X_pca)
+colnames(X_pca_df) <- paste0("PCA", 1:ncol(X_pca_df))
+
+# 合并 PCA 结果、'Hypertension' 和 'SEX'
+combine_pca <- cbind(Hypertension = Combined_Data$Hypertension, SEX = Combined_Data$SEX, SOCIAL = Combined_Data$SOCIAL,X_pca_df)
+
+# 拟合 logistic 回归模型
+logistic_Combine <- glm(Hypertension ~ SEX + ., data = combine_pca, family = binomial())
+
+# 输出模型摘要
+pca_result
+summary(logistic_Combine)
+```
+
+
+
+
