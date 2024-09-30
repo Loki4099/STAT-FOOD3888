@@ -1,0 +1,253 @@
+---
+title: "Energy_Bsp_Eda"
+author: "Loki"
+date: "2024-09-30"
+output: html_document
+---
+
+
+```{r,setup, include=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+```
+
+```{r}
+raw_bsp<-read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+raw_bcn<-read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
+raw_bhh<-read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
+```
+
+```{r}
+merged_data1 <- merge(raw_bsp, raw_bcn, by = c("ABSGID","ABSHID"))
+merged_data2<- merge(merged_data1, raw_bhh,by = c("ABSHID"))
+
+selected_data <- merged_data2 %>%
+  select(
+    ABSHID, SYSTOL, DIASTOL, ICD10ME, SF2SA1DB,
+    AGEEC, SEX, BMISC, POTAST1, POTAST2, SODIUMT1, SODIUMT2, SABDYMS,
+    PROPER1, FATPER1, LAPER1, ALAPER1, CHOPER1, 
+    SUGPER1, STARPER1, ALCPER1, SATPER1, TRANPER1, 
+    FIBRPER1, MONOPER1, POLYPER1,
+    PROPER2, FATPER2, LAPER2, ALAPER2, CHOPER2, 
+    SUGPER2, STARPER2, ALCPER2, SATPER2, TRANPER2, 
+    FIBRPER2, MONOPER2, POLYPER2
+  )
+
+head(selected_data)
+```
+
+```{r}
+# Replace specific values with NA for a given dataset (assume the dataset is named df)
+
+correct_bsp <- selected_data %>%
+  mutate(
+    # Biophysical Measures  
+    SYSTOL = na_if(SYSTOL, 998) %>% na_if(999)%>% na_if(0),
+    DIASTOL = na_if(DIASTOL, 998) %>% na_if(999)%>% na_if(0),
+    
+    # Biophysical Measures
+    #BMR = na_if(BMR, 99998),
+    BMISC = na_if(BMISC, 0) %>% na_if(98) %>% na_if(99),
+    ICD10ME = na_if(ICD10ME, 0) %>% na_if(7) %>% na_if(20),
+    
+    # Socio-Demographic Factors
+    #INCDEC = na_if(INCDEC, 0) %>% na_if(98) %>% na_if(99)
+    SABDYMS = na_if(SABDYMS, 0) %>% na_if(8) %>% na_if(9),
+    
+    # Exercise Measures
+    #EXREGUIC = na_if(EXREGUIC, 0) %>% na_if(9),
+    #EXREGUID = na_if(EXREGUID, 0) %>% na_if(9),
+    #DURACSF = na_if(DURACSF, 0) %>% na_if(8),
+    #DURSACSF = na_if(DURSACSF, 0) %>% na_if(8),
+  )
+```
+
+```{r}
+#correct_bsp$HYPBC <- as.factor(correct_bsp$HYPBC)
+#correct_bsp$BPCAT <- as.factor(correct_bsp$BPCAT)
+#correct_bsp$SMKDAILY <- as.factor(correct_bsp$SMKDAILY)
+#correct_bsp$EXREGUIC <- as.factor(correct_bsp$EXREGUIC)
+#correct_bsp$EXREGUID = as.factor(correct_bsp$EXREGUID)
+correct_bsp$SEX <- as.factor(correct_bsp$SEX)
+#correct_data$INCDEC <- as.factor(correct_bsp$INCDEC)
+#correct_bsp$DURACSF <- as.factor(correct_bsp$DURACSF)
+#correct_bsp$DURSACSF <- as.factor(correct_bsp$DURSACSF)
+correct_bsp$SABDYMS <- as.factor(correct_bsp$SABDYMS)
+correct_bsp$ICD10ME <- as.factor(correct_bsp$ICD10ME)
+correct_bsp$SOCIAL <- as.factor(correct_bsp$SF2SA1DB)
+```
+
+```{r}
+correct_bsp <- correct_bsp %>%
+  mutate(
+    PROPER = (PROPER1 + PROPER2) / 2,
+    FATPER = (FATPER1 + FATPER2) / 2,
+    LAPER = (LAPER1 + LAPER2) / 2,
+    ALAPER = (ALAPER1 + ALAPER2) / 2,
+    CHOPER = (CHOPER1 + CHOPER2) / 2,
+    SUGPER = (SUGPER1 + SUGPER2) / 2,
+    STARPER = (STARPER1 + STARPER2) / 2,
+    ALCPER = (ALCPER1 + ALCPER2) / 2,
+    SATPER = (SATPER1 + SATPER2) / 2,
+    TRANPER = (TRANPER1 + TRANPER2) / 2,
+    FIBRPER = (FIBRPER1 + FIBRPER2) / 2,
+    MONOPER = (MONOPER1 + MONOPER2) / 2,
+    POLYPER = (POLYPER1 + POLYPER2) / 2,
+    POTAST = (POTAST1 + POTAST2) / 2,
+    SODIUMT = (SODIUMT1 + SODIUMT2) / 2
+  ) %>%
+mutate(Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1, # and or condition
+    TRUE ~ 0
+  ))) 
+```
+
+```{r}
+filtered_bsp <- correct_bsp %>%
+  filter(AGEEC >= 18, SABDYMS!=4) 
+
+filtered_bsp <- na.omit(filtered_bsp, subset = "BMISC")
+```
+```{r}
+str(filtered_bsp)
+```
+
+```{r}
+save(filtered_bsp,file ="Filtered Bsp.Rdata")
+```
+
+```{r}
+#load library
+library(naniar)
+library(knitr)
+
+#summarize missing data
+miss_summary <- miss_var_summary(correct_bsp)
+kable(miss_summary, digits = 2, format = "html")
+
+#Visualize missing data
+# Filter variables with missing value percentage greater than 0%
+missing_data <- miss_var_summary(correct_bsp)
+missing_data_filtered <- missing_data  #%>% filter(pct_miss > 0)
+
+# Create a plot with only the filtered variables
+ggplot(missing_data_filtered, aes(x = reorder(variable, n_miss), y = n_miss)) +
+  geom_segment(aes(xend = reorder(variable, n_miss), yend = 0), color = "blue", size = 1.2) +  # Add vertical lines from the y-axis
+  geom_point(color = "red", size = 2) +  # Highlight points in red
+  coord_flip() +  # Flip coordinates for better readability
+  theme_minimal() +
+  labs(title = "Missing Data by Variable (Percentage > 0%)",
+       y = "Number of Missing Values",
+       x = "Variables") +
+  theme(axis.text.y = element_text(size = 8, hjust = 1))  # Adjust label size
+```
+
+```{r}
+plot_categorical_distribution <- function(data) {
+  categorical_vars <- data %>%
+    select(where(is.factor) | where(is.character)) %>%
+    select(-ABSHID)
+  
+  for (var in names(categorical_vars)) {
+    non_na_data <- data %>%
+      filter(!is.na(.data[[var]]))
+    
+    if (nrow(non_na_data) == 0) next
+    
+    p <- ggplot(non_na_data, aes(x = .data[[var]])) +
+      geom_bar(aes(y = (..count..) / sum(..count..), fill = .data[[var]]), color = "black") +
+      scale_fill_brewer(palette = "Set3") + 
+      labs(title = paste("Proportion of Categories in", var), 
+           x = "Category", 
+           y = "Proportion") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+    
+    print(p)
+  }
+}
+
+plot_categorical_distribution(correct_bsp)
+```
+
+```{r,fig.height==10}
+library(ggplot2)
+library(reshape2)
+library(ggcorrplot)
+
+numeric_vars <- filtered_bsp %>%
+  select(
+    SYSTOL, DIASTOL, PROPER, FATPER, LAPER, ALAPER, CHOPER, SUGPER,
+    STARPER, ALCPER, SATPER, TRANPER, FIBRPER, MONOPER, POLYPER
+  )
+
+# Compute the correlation matrix
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Create a heatmap using ggcorrplot
+p <- ggcorrplot(corr_matrix, method = "circle", lab = TRUE,
+                title = "Correlation Heatmap of Selected Variables for Indigeous",
+                colors = c("blue", "white", "red"),
+                tl.cex = 14, lab_size = 5)
+p
+
+ggsave("heatmap_bsp.png", plot = p, width = 12, height = 10, units = "in", dpi = 300)
+```
+
+```{r}
+train_bsp <- filtered_bsp %>%
+  select(
+    AGEEC, SEX, BMISC,
+    POTAST, SODIUMT, 
+    PROPER, FATPER, LAPER, ALAPER, CHOPER, 
+    SUGPER, STARPER, ALCPER, SATPER, TRANPER, 
+    FIBRPER, MONOPER, POLYPER,
+  )
+```
+
+```{r}
+# 载入必要的库
+library(dplyr)
+library(ggplot2)
+library(broom)
+library(caret)
+library(stats)  # 使用 glm() 和 prcomp()
+
+# 假定 filtered_data 和 train_variables 已经定义
+# 确保 'Hypertension' 是因子类型
+filtered_bsp$Hypertension <- as.factor(filtered_bsp$Hypertension)
+
+# 从 train_variables 中选择数值型变量进行 PCA，除去 'SEX'
+numeric_vars_for_pca <- train_bsp %>% 
+  select_if(is.numeric)  
+
+# 标准化选择的数值型数据
+preProc <- preProcess(numeric_vars_for_pca, method = c("center", "scale"))
+X_scaled <- predict(preProc, numeric_vars_for_pca)
+
+# 主成分分析
+pca_result <- prcomp(X_scaled, scale. = TRUE)
+cum_var <- cumsum(pca_result$sdev^2 / sum(pca_result$sdev^2))
+num_components <- which(cum_var >= 0.95)[1]
+X_pca <- pca_result$x[, 1:num_components]
+
+# 将 PCA 结果转换为数据框
+X_pca_df <- as.data.frame(X_pca)
+colnames(X_pca_df) <- paste0("PCA", 1:ncol(X_pca_df))
+
+# 合并 PCA 结果、'Hypertension' 和 'SEX'
+bsp_pca <- cbind(Hypertension = filtered_bsp$Hypertension, SEX = filtered_bsp$SEX, SOCIAL = filtered_bsp$SOCIAL,X_pca_df)
+
+# 拟合 logistic 回归模型
+logistic_bsp <- glm(Hypertension ~ SEX + ., data = bsp_pca, family = binomial())
+
+# 输出模型摘要
+pca_result
+summary(logistic_bsp)
+```
