@@ -42,7 +42,10 @@ Data1 <- bp_bb %>%
     ENERGYT1, ENERGYT2, 
     ENRGYT1, ENRGYT2, 
     FIBRET1, FIBRET2, 
-    FIBRPER1, FIBRPER2
+    FIBRPER1, FIBRPER2,
+    CHOPER1, CHOPER2,
+    CHOWSAT1, CHOWSAT2,
+    CHOWOAT1, CHOWOAT2
   ) %>%
   rename(SOCIAL = SF2SA1QN) %>%
   mutate(
@@ -57,7 +60,10 @@ Data1 <- bp_bb %>%
     ENERGYT = (ENERGYT1 + ENERGYT2) / 2,
     ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
     FIBRET = (FIBRET1 + FIBRET2) / 2,
-    FIBRPER = (FIBRPER1 + FIBRPER2)/2
+    FIBRPER = (FIBRPER1 + FIBRPER2)/2,
+    CHOPER = (CHOPER1 + CHOPER2)/2,
+    CHOWSAT = (CHOWSAT1 + CHOWSAT2)/2,
+    CHOWOAT = (CHOWOAT1 + CHOWOAT2)/2
     ) %>%
   mutate(
     FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,
@@ -74,7 +80,8 @@ Data1 <- bp_bb %>%
          SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRET, FIBRETP, FIBRPER,Hypertension)
+         FIBRET, FIBRETP, FIBRPER,
+         CHOPER, CHOWSAT, CHOWOAT, Hypertension)
 
 summary(Data1)
 ```
@@ -90,7 +97,10 @@ Data2 <- bsp_bcn_bhh %>%
     FIBRET1, FIBREF1, SABDYMS,  
     FIBRET2, FIBREF2,
     ICD10ME, SF2SA1DB,
-    DURACSF, FIBRPER1, FIBRPER2
+    DURACSF, FIBRPER1, FIBRPER2,
+    CHOPER1, CHOPER2,
+    CHOWSAT1, CHOWSAT2,
+    CHOWOAT1, CHOWOAT2
   ) %>%
   rename(SOCIAL = SF2SA1DB) %>%
   mutate(
@@ -106,7 +116,10 @@ Data2 <- bsp_bcn_bhh %>%
     ENERGYT = (ENERGYT1 + ENERGYT2) / 2,
     ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
     FIBRET = (FIBRET1 + FIBRET2) / 2,
-    FIBRPER = (FIBRPER1 + FIBRPER2)/2
+    FIBRPER = (FIBRPER1 + FIBRPER2)/2,
+    CHOPER = (CHOPER1 + CHOPER2)/2,
+    CHOWSAT = (CHOWSAT1 + CHOWSAT2)/2,
+    CHOWOAT = (CHOWOAT1 + CHOWOAT2)/2
     ) %>%
   mutate(
     FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,
@@ -120,7 +133,8 @@ Data2 <- bsp_bcn_bhh %>%
   select(ABSPID, SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRET, FIBRETP, FIBRPER,Hypertension)
+         FIBRET, FIBRETP, FIBRPER,
+         CHOPER, CHOWSAT, CHOWOAT,Hypertension)
 
 summary(Data2)
 ```

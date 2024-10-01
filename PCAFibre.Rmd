@@ -28,7 +28,7 @@ FibreData <- na.omit(FibreData)
 
 ```{r all heatmap2}
 corr_matrix <- FibreData %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER) %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER, CHOPER, CHOWSAT, CHOWOAT) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
@@ -40,7 +40,7 @@ ggcorrplot(corr_matrix, method = "circle", lab = TRUE,
 
 ```{r all pca}
 data_clean <- FibreData %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET)
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT)
 
 pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
 
@@ -50,7 +50,7 @@ pcaResult
 
 ```{r all regression}
 all_scaled <- FibreData %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET) %>%
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT) %>%
   scale()
 
 df_pca <- FibreData %>%
@@ -71,7 +71,7 @@ FibreDataInd <- na.omit(FibreDataInd)
 
 ```{r ind heatmap2}
 corr_matrix <- FibreDataInd %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER) %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER, CHOPER, CHOWSAT, CHOWOAT) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
@@ -83,7 +83,7 @@ ggcorrplot(corr_matrix, method = "circle", lab = TRUE,
 
 ```{r ind pca}
 data_clean <- FibreDataInd %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET)
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT)
 
 pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
 
@@ -93,7 +93,7 @@ pcaResult
 
 ```{r ind regression}
 all_scaled <- FibreDataInd %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET) %>%
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT) %>%
   scale()
 
 df_pca <- FibreDataInd %>%
@@ -114,7 +114,7 @@ FibreDataNon <- na.omit(FibreDataNon)
 
 ```{r non heatmap2}
 corr_matrix <- FibreDataNon %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER) %>%
+  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER, CHOPER, CHOWSAT, CHOWOAT) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
@@ -126,7 +126,7 @@ ggcorrplot(corr_matrix, method = "circle", lab = TRUE,
 
 ```{r non pca}
 data_clean <- FibreDataNon %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET)
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT)
 
 pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
 
@@ -136,7 +136,7 @@ pcaResult
 
 ```{r non regression}
 all_scaled <- FibreDataNon %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET) %>%
+  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT) %>%
   scale()
 
 df_pca <- FibreDataNon %>%
