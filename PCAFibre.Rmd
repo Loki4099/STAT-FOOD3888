@@ -28,19 +28,19 @@ FibreData <- na.omit(FibreData)
 
 ```{r all heatmap2}
 corr_matrix <- FibreData %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER, CHOPER, CHOWSAT, CHOWOAT) %>%
+  select(where(is.numeric)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
-ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+ggcorrplot(corr_matrix, lab = TRUE, 
            title = "Correlation Heatmap for ALL", 
            colors = c("blue", "white", "red"),
-           tl.cex = 12, lab_size = 4) + theme(legend.position = "none")  
+           tl.cex = 8, lab_size = 2) + theme(legend.position = "none")  
 ```
 
 ```{r all pca}
 data_clean <- FibreData %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT)
+  select(where(is.numeric))
 
 pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
 
@@ -50,7 +50,7 @@ pcaResult
 
 ```{r all regression}
 all_scaled <- FibreData %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT) %>%
+  select(where(is.numeric)) %>%
   scale()
 
 df_pca <- FibreData %>%
@@ -58,7 +58,7 @@ df_pca <- FibreData %>%
          SEX = as.factor(SEX)) %>%
   bind_cols(prcomp(all_scaled, center = TRUE, scale. = TRUE)$x)
 
-r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6 + PC7 + PC8 + PC9, 
+r <- glm(Hypertension ~ SOCIAL + SEX+ PC1 + PC2 + PC3 + PC4 +PC5 + PC6 + PC7 + PC8 + PC9 + PC10, 
          data = df_pca, family = binomial())
 
 summary(r)
@@ -71,19 +71,19 @@ FibreDataInd <- na.omit(FibreDataInd)
 
 ```{r ind heatmap2}
 corr_matrix <- FibreDataInd %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER, CHOPER, CHOWSAT, CHOWOAT) %>%
+  select(where(is.numeric)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
-ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+ggcorrplot(corr_matrix, lab = TRUE, 
            title = "Correlation Heatmap for IND", 
            colors = c("blue", "white", "red"),
-           tl.cex = 12, lab_size = 4) + theme(legend.position = "none")  
+           tl.cex = 8, lab_size = 2) + theme(legend.position = "none")  
 ```
 
 ```{r ind pca}
 data_clean <- FibreDataInd %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT)
+  select(where(is.numeric))
 
 pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
 
@@ -93,7 +93,7 @@ pcaResult
 
 ```{r ind regression}
 all_scaled <- FibreDataInd %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT) %>%
+  select(where(is.numeric)) %>%
   scale()
 
 df_pca <- FibreDataInd %>%
@@ -114,19 +114,19 @@ FibreDataNon <- na.omit(FibreDataNon)
 
 ```{r non heatmap2}
 corr_matrix <- FibreDataNon %>%
-  select(SYSTOL, DIASTOL, POTAST, SODIUMT, FIBRET, FIBRPER, CHOPER, CHOWSAT, CHOWOAT) %>%
+  select(where(is.numeric)) %>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
-ggcorrplot(corr_matrix, method = "circle", lab = TRUE, 
+ggcorrplot(corr_matrix, lab = TRUE, 
            title = "Correlation Heatmap for NON", 
            colors = c("blue", "white", "red"),
-           tl.cex = 12, lab_size = 4) + theme(legend.position = "none")  
+           tl.cex = 8, lab_size = 2) + theme(legend.position = "none")  
 ```
 
 ```{r non pca}
 data_clean <- FibreDataNon %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT)
+  select(where(is.numeric))
 
 pca_result <- prcomp(scale(data_clean), center = TRUE, scale. = TRUE)
 
@@ -136,7 +136,7 @@ pcaResult
 
 ```{r non regression}
 all_scaled <- FibreDataNon %>%
-  select(AGEC, BMISC, POTAST, SODIUMT, FIBRPER, FIBRET, CHOPER, CHOWSAT, CHOWOAT) %>%
+  select(where(is.numeric)) %>%
   scale()
 
 df_pca <- FibreDataNon %>%

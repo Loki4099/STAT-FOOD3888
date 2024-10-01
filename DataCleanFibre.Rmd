@@ -42,7 +42,7 @@ Data1 <- bp_bb %>%
     ENERGYT1, ENERGYT2, 
     ENRGYT1, ENRGYT2, 
     FIBRET1, FIBRET2, 
-    FIBRPER1, FIBRPER2,
+    FIBRPER1, FIBRPER2, 
     CHOPER1, CHOPER2,
     CHOWSAT1, CHOWSAT2,
     CHOWOAT1, CHOWOAT2
@@ -61,9 +61,7 @@ Data1 <- bp_bb %>%
     ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
     FIBRET = (FIBRET1 + FIBRET2) / 2,
     FIBRPER = (FIBRPER1 + FIBRPER2)/2,
-    CHOPER = (CHOPER1 + CHOPER2)/2,
-    CHOWSAT = (CHOWSAT1 + CHOWSAT2)/2,
-    CHOWOAT = (CHOWOAT1 + CHOWOAT2)/2
+    CHOPER = (CHOPER1 + CHOPER2) / 2
     ) %>%
   mutate(
     FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,
@@ -81,7 +79,8 @@ Data1 <- bp_bb %>%
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
          FIBRET, FIBRETP, FIBRPER,
-         CHOPER, CHOWSAT, CHOWOAT, Hypertension)
+         CHOPER,
+         Hypertension)
 
 summary(Data1)
 ```
@@ -117,9 +116,7 @@ Data2 <- bsp_bcn_bhh %>%
     ENRGYT = (ENRGYT1 + ENRGYT2) / 2,
     FIBRET = (FIBRET1 + FIBRET2) / 2,
     FIBRPER = (FIBRPER1 + FIBRPER2)/2,
-    CHOPER = (CHOPER1 + CHOPER2)/2,
-    CHOWSAT = (CHOWSAT1 + CHOWSAT2)/2,
-    CHOWOAT = (CHOWOAT1 + CHOWOAT2)/2
+    CHOPER = (CHOPER1 + CHOPER2) / 2
     ) %>%
   mutate(
     FIBRETP = (ENERGYT - ENRGYT) / ENERGYT * 100,
@@ -133,8 +130,8 @@ Data2 <- bsp_bcn_bhh %>%
   select(ABSPID, SOCIAL, AGEC, SEX, BMISC,
          SYSTOL, DIASTOL, 
          POTAST, SODIUMT,
-         FIBRET, FIBRETP, FIBRPER,
-         CHOPER, CHOWSAT, CHOWOAT,Hypertension)
+         FIBRET, FIBRETP, FIBRPER,CHOPER,
+         Hypertension)
 
 summary(Data2)
 ```
