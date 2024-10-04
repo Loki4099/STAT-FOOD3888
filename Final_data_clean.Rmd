@@ -245,32 +245,16 @@ data$DIASTOL[is.na(data$DIASTOL)] <- predict(model_DIASTOL, newdata = data[is.na
 data1 <- data %>%
   select(-ABSPID,-ABSHID)
 vis_miss(data1)
-
-```
-
-
-# Section 6: Filter target population 
-
-Subsequently, we add two columns base on the values of two blood pressure measurements.
-```{r}
-selected_data <- data %>%
-  mutate(
-    Hypertension = as.factor(case_when(
-    SYSTOL >= 140 | DIASTOL >= 90 ~ 1,
-    TRUE ~ 0)),
-    
-    BP_Category = as.factor(case_when(
-    SYSTOL < 120 & DIASTOL < 80 ~ 0,      
-    SYSTOL >= 120 & SYSTOL <= 129 & DIASTOL < 80 ~ 1,  
-    TRUE ~ 2   ))
-  )
-
+selected_data <- data 
 ```
 
 
 
 
-# Section 7: Outlier detection
+
+
+
+# Section 6: Outlier detection
 
 Next we checked the outliers in each numeric variables, we had observed that all the variables except the **AGEC** (which indicate the age of the person) contain ouliers,
 ```{r,fig.height=10}
@@ -294,15 +278,100 @@ for (var in names(numerical_vars)) {
 
 ```{r}
 
+normal_ranges <- list( SYSTOL = c(70, 220),  
+                       DIASTOL = c(40, 130), 
+                       BMISC = c(10, 55),
+                       POTAST = c(1000,7500),
+                       SODIUMT = c(500,6500),
+                       ALCPER = c(0, 30),
+                       CHOPER = c(10, 80)
+                       ) 
+                       
+filtered_data <- selected_data %>%
+  filter(
+    SYSTOL >= normal_ranges$SYSTOL[1] & SYSTOL <= normal_ranges$SYSTOL[2],
+    DIASTOL >= normal_ranges$DIASTOL[1] & DIASTOL <= normal_ranges$DIASTOL[2],
+    BMISC >= normal_ranges$BMISC[1] & BMISC <= normal_ranges$BMISC[2],
+    POTAST >= normal_ranges$POTAST[1] & POTAST <= normal_ranges$POTAST[2],
+    SODIUMT >= normal_ranges$SODIUMT[1] & SODIUMT <= normal_ranges$SODIUMT[2],
+    ALCPER>= normal_ranges$ALCPER[1] & ALCPER <= normal_ranges$ALCPER[2],
+    CHOPER >= normal_ranges$CHOPER[1] & CHOPER <= normal_ranges$CHOPER[2]
+  )
+
+filtered_data
 ```
 
 
 
 
 
+# Section 7: Calculating extra response & confounding variables 
+
+Subsequently, we add two columns base on the values of two blood pressure measurements. Also calculate the ratio of the sodium and potassium for one of the confounding variable.
+
+```{r}
+filtered_data <- filtered_data %>%
+  mutate(
+    Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1,
+    TRUE ~ 0)),
+    
+    BP_Category = as.factor(case_when(
+    SYSTOL < 120 & DIASTOL < 80 ~ 0,      
+    SYSTOL >= 120 & SYSTOL <= 129 & DIASTOL < 80 ~ 1,  
+    TRUE ~ 2   )),
+    
+    PS_Ratio = SODIUMT/POTAST
+  )%>%
+  select(-SODIUMT,-POTAST)
+
+```
 
 
+# Analysis 1: Logistic regression
 
+## 1.1 Multicollinearity
+
+
+```{r}
+a <- filtered_data %>%
+  select(where(is.numeric),-SYSTOL,-DIASTOL)
+ggscatmat(a)
+
+#corr_matrix <- filtered_data %>%
+#  select(where(is.numeric)) %>%
+#  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+#  cor(use = "complete.obs")
+
+#ggcorrplot(corr_matrix, lab = TRUE, 
+#           title = "Correlation Heatmap for ALL", 
+#           colors = c("blue", "white", "red"),
+#           tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
+```
+## PCA
+
+```{r}
+data_pca <- filtered_data %>%
+  select(where(is.numeric),-SYSTOL,-DIASTOL)
+
+pca_result <- prcomp(scale(data_pca), center = TRUE, scale. = TRUE)
+
+pcaResult <- as.data.frame(pca_result$rotation)
+pcaResult
+```
+
+## Logistic regression
+```{r}
+numeric_cols <- sapply(filtered_data, is.numeric)  
+
+normalized_data <- filtered_data
+normalized_data[numeric_cols] <- scale(filtered_data[numeric_cols])
+
+r <- glm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
+         data = normalized_data, family = binomial())
+
+summary(r)
+```
 
 
 
