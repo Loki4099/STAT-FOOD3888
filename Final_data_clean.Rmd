@@ -1,8 +1,325 @@
 ---
 title: "Final_data_clean"
-author: "miaomiao Chen"
-date: "2024-10-04"
-output: html_document
+author: "Group2"
+date: "2024-08-21"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+table-of-contents: true 
+number-sections: true 
+embed-resources: true 
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
-# First of all load in the data
-We first load in the useful data sets we need including the 
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(gt)
+library(naniar)
+library(ggcorrplot)
+library(corrplot)
+library(GGally)
+```
+
+# Section 1: Load in the datasets
+We first load in the useful data sets we need including the original population and indigenous population. Here we first merged two datasets (bb/bp) for original populations using primary key (ABSPID). We also merged three data sets (bsp/bhh/bcn) for indigenous population by (ABSGID & ABSHID). We renamed the column names to keep consistency.
+
+At the same time, we then add a column which indicate whether the person is in the original population or indigenous populaiotn (binary result).
+```{r}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+bp_bb <- inner_join(raw_bp, raw_bb, by = "ABSPID") %>%
+  rename(SOCIAL = SF2SA1QN) %>%
+   mutate(Identity = factor(0))
+
+raw_bsp <- read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+raw_bcn <- read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
+raw_bhh <- read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
+
+
+
+bsp_bcn_bhh<- left_join(raw_bsp, raw_bhh,by = c("ABSHID")) %>%
+  filter(!ABSHID %in% raw_bcn$ABSHID[raw_bcn$ICD10ME %in% c(7, 20)])%>%
+  rename(AGEC =AGEEC, SOCIAL = SF2SA1DB)%>%
+   mutate(Identity = factor(1))
+```
+When loading the indigenous population data set, we also filter out the people who have hypertension and taking medication.
+
+# Section 2: Select and merge
+We start to clean the data and first as we only looking at the population who are not currently have medication relating to blood pressure, also we focus on the adults and population who are not currently pregnant, so we only focus on the target population in our analysis.
+
+```{r}
+bp_bb <- bp_bb %>%
+  filter(
+    AGEC >= 18, 
+    HYPBC == 5,
+    SABDYMS != 4
+    )
+bsp_bcn_bhh <- bsp_bcn_bhh %>% 
+  filter(
+    AGEC >= 18, 
+    SABDYMS != 4)
+```
+
+
+Next, we merged two populations into the one whole population and name this big data set as raw_data.
+
+```{r}
+raw_data <- bind_rows(bp_bb,bsp_bcn_bhh)
+```
+
+The useful variables then been selected including all predictors, response variables, and confounding variables.
+
+```{r}
+selected_data <- raw_data %>%
+select(
+    ABSPID, ABSHID, SOCIAL, AGEC, SEX, BMISC, SYSTOL, DIASTOL,
+    SMKSTAT, ALCPER1, ALCPER2,
+    POTAST1, POTAST2, 
+    SODIUMT1, SODIUMT2,
+    FIBRPER1, FIBRPER2, 
+    CHOPER1, CHOPER2,
+    Identity
+  )
+
+
+```
+
+# Section 3: Missing values encoding and data types conversion
+
+In next step we encode all missing values base on the data dictionary and correct all data types. At the same time we calculate the average of those two-days variables.
+
+```{r}
+
+variable_info <- data.frame(
+  Variable = names(selected_data),
+  Type = sapply(selected_data, class)
+)
+
+variable_info %>%
+  gt() %>%
+  tab_header(
+    title = "Variable Names and Their Types"
+  ) %>%
+ tab_caption(caption = md("Table 1: Variable types table"))
+```
+
+
+```{r}
+selected_data <- selected_data %>%
+  mutate(
+    across(c(SEX, SOCIAL, SMKSTAT), ~ as.factor(.)),
+    BMISC = na_if(na_if(BMISC, 99), 98),
+    SYSTOL = na_if(na_if(na_if(SYSTOL,0),998),999),
+    DIASTOL = na_if(na_if(na_if(DIASTOL,0),998),999),
+    POTAST = (POTAST1 + POTAST2) / 2, 
+    SODIUMT = (SODIUMT1 + SODIUMT2) / 2,
+    FIBRPER = (FIBRPER1 + FIBRPER2)/2,
+    CHOPER = (CHOPER1 + CHOPER2) / 2,
+    ALCPER = (ALCPER1 + ALCPER2) /2
+    ) %>%
+ select(
+    ABSPID,ABSHID, SOCIAL, AGEC, SEX, BMISC, SYSTOL, DIASTOL,
+    SMKSTAT, ALCPER,
+    POTAST, 
+    SODIUMT,
+    FIBRPER, 
+    CHOPER,
+    Identity
+  )
+```
+
+We had a look at the types after we changed.
+
+```{r}
+
+variable_info <- data.frame(
+  Variable = names(selected_data),
+  Type = sapply(selected_data, class)
+)
+
+variable_info %>%
+  gt() %>%
+  tab_header(
+    title = "Variable Names and Their Types"
+  ) %>%
+ tab_caption(caption = md("Table 2: Variable types table after correction"))
+```
+
+
+# Section 4: Duplicate rows identification
+
+Then the duplicate values been checked, we found no duplicate values.
+```{r}
+
+unique_data <- selected_data %>%
+  select(-ABSPID) %>%
+  distinct()
+
+dims <- dim(unique_data)
+
+dims_table <- tibble::tibble(
+  Dimension = c("Rows", "Columns"),
+  Count = dims
+)
+dims_table %>%
+  gt() %>%
+  tab_header(
+    title = "Dimensions of Unique Tibble"
+  )%>%
+ tab_caption(caption = md("Table 3: Dimensions table"))
+```
+
+
+
+# Section 5: Missing values cleaning
+
+## 5.1 Missing values identification
+The summary statistic of missing values been shown below, we found there occurs some missingness in BMI and blood pressure measurments.
+
+```{r warning = FALSE}
+data2 <- selected_data %>%
+  select(-ABSPID,-ABSHID)
+miss_summary <- miss_var_summary(data2)
+kable(miss_summary, digits = 2, format = "html")
+```
+
+Then looking in to the missingness pattern,this missingness plot provides an overview of missing values for each variable in our data set, the majority of variables have 0% missing values, with only three variables showing missing data (BMISC, SYSTOL, and DIASTOL) at around 13-14%.
+The missing values seem to follow a consistent pattern across the observations (rows) for the BMISC, SYSTOL, and DIASTOL variables. 
+
+```{r}
+vis_miss(data2)
+```
+
+## 5.2 Regression imputation for missing values
+
+Base on the patterns we found, we decide to use regression imputation to deal with those small proportion of missingness,
+
+```{r}
+data <- selected_data 
+corr_matrix <- data%>%
+  select(where(is.numeric)) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, lab = TRUE, 
+           title = "Correlation Heatmap for ALL", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
+
+```
+AS observed from the heat map, we can tell that the two most significant (except blood pressure) multicollinearity is between energy percentage from carbohydrate and fibers, also between the sodium and potassium. So we decide to only choose one between each to do the regression imputation for missing values.
+
+
+```{r}
+# 1: Impute missing values for BIMISC
+model_BMISC <- lm(BMISC ~ SEX + SOCIAL + AGEC + POTAST + FIBRPER + ALCPER + SMKSTAT + Identity, data = data, na.action = na.exclude)
+
+data$BMISC[is.na(data$BMISC)] <- predict(model_BMISC, newdata = data[is.na(data$BMISC), ])
+
+# 2: Impute missing values for SYSTOL
+model_SYSTOL <- lm(SYSTOL ~ SEX + SOCIAL + AGEC + BMISC + POTAST + FIBRPER + ALCPER + SMKSTAT + Identity, data = data, na.action = na.exclude)
+
+data$SYSTOL[is.na(data$SYSTOL)] <- predict(model_SYSTOL, newdata = data[is.na(data$SYSTOL), ])
+
+# 3: Impute missing values for DIASTOL
+model_DIASTOL <- lm(DIASTOL ~ SEX + SOCIAL + AGEC + BMISC + SYSTOL + POTAST  + FIBRPER + ALCPER + SMKSTAT + Identity, data = data, na.action = na.exclude)
+data$DIASTOL[is.na(data$DIASTOL)] <- predict(model_DIASTOL, newdata = data[is.na(data$DIASTOL), ])
+
+# Check the imputed values
+data1 <- data %>%
+  select(-ABSPID,-ABSHID)
+vis_miss(data1)
+
+```
+
+
+# Section 6: Filter target population 
+
+Subsequently, we add two columns base on the values of two blood pressure measurements.
+```{r}
+selected_data <- data %>%
+  mutate(
+    Hypertension = as.factor(case_when(
+    SYSTOL >= 140 | DIASTOL >= 90 ~ 1,
+    TRUE ~ 0)),
+    
+    BP_Category = as.factor(case_when(
+    SYSTOL < 120 & DIASTOL < 80 ~ 0,      
+    SYSTOL >= 120 & SYSTOL <= 129 & DIASTOL < 80 ~ 1,  
+    TRUE ~ 2   ))
+  )
+
+```
+
+
+
+
+# Section 7: Outlier detection
+
+Next we checked the outliers in each numeric variables, we had observed that all the variables except the **AGEC** (which indicate the age of the person) contain ouliers,
+```{r,fig.height=10}
+numerical_vars <- selected_data %>%
+  select_if(is.numeric) 
+
+
+par(mfrow = c(3, 3)) 
+for (var in names(numerical_vars)) {
+  boxplot(numerical_vars[[var]], 
+          main = var, 
+          ylab = var, 
+          col = "lightblue",        
+          border = "darkblue",      
+          outcol = "red",           
+          pch = 19                
+  )
+}
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
