@@ -1,0 +1,243 @@
+---
+title: "proposal"
+author: "miaomiao Chen"
+date: "2024-08-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Default knitting options
+knitr::opts_chunk$set(echo=TRUE, # Echo the code
+                      tidy=TRUE, # Nicely dity up code
+                      warning=FALSE, # No warnings please 
+                      message=FALSE) # No messages please
+
+options(warn=-1) 
+
+# Suppress start up warnings when loading libraries
+library <- function(...) {
+  suppressPackageStartupMessages(base::library(...))
+}
+```
+
+
+```{r libraries}
+# Load in all libraries
+library(tidyverse)
+library(here)      # directory referencing
+library(readxl)    # reading Excel files
+library(janitor)   # data cleaning 
+library(stringr)   # string manimpuation
+library(tidyr)  
+library(gt) # new tidy functions
+```
+
+1. What effect does total grain/cereal consumption have on risk of type 2 diabetes among normal, overweight and obese individuals?
+2. How does the type of grains (refined-grain vs whole-grain) consumed influence the risks of type 2 diabetes among normal, overweight and obese individuals? 
+3. Is there a correlation between intake of whole grains and refined grains and type 2 diabetes risk factors (plasma glucose, HbA1c, ALT and GGT)?  
+
+
+
+
+
+```{r}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+```
+
+
+
+```{r}
+x <- read.csv("ResponseVariables_Cleaned.csv")
+str(x)
+```
+
+```{r}
+kept_columns_df <- kept_columns_df %>% 
+  filter(!VariableNames %in% c("ABSHID","ABSFID", "ABSLFID", "ABSSID", "ABSBID","LEVELP","ALTRESB","GGTRESB","GLUCFREB","HBA1MREB","HBA1PREB","DIABQ01A"))
+
+gt_table <- gt(kept_columns_df) %>%
+  tab_header(
+    title = "Main variables (response and predictors)")
+  
+
+# Display the gt table
+gt_table
+```
+
+
+
+```{r}
+load("ResponseVariables_Cleaned.RData")
+data
+```
+
+
+
+
+
+```{r}
+lm(GLUCFREB~AGEC+SEX+BMISC+,data=data)
+```
+
+
+
+```{r}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+
+X_all_File_variables <- read_excel("ZIPallFiles/_all.File.variables.xlsx", 
+    sheet = "Variables", col_names = FALSE)
+
+X_all_File_variables <- X_all_File_variables %>%
+  rename(
+    Survey = `...1`,
+    Name = `...2`,
+    VariableNames = `...3`,
+    Description = `...4`
+  ) %>%
+  filter(Name %in% c("AHSnpa11bp", "AHSnpa11ba"))
+```
+
+
+```{r}
+search_terms <- c("id","physical", "energy intake", "alcohol", "Tobacco","smoke" , "fruit intake","fruit", "vegetable","Carbohydrate","free sugar")
+
+Possible_Variables <- X_all_File_variables %>%
+  filter(grepl(paste(search_terms, collapse = "|"), Description, ignore.case = TRUE)) %>%
+  select(VariableNames, Description) %>%
+  distinct()
+```
+
+```{r}
+bp_bb <- bind_rows(raw_bp, raw_bb)
+
+columns_to_keep <- Possible_Variables$VariableNames
+
+filtered_bp_bb <- bp_bb %>%
+  select(any_of(columns_to_keep))
+
+kept_columns_df <- Possible_Variables %>%
+  filter(VariableNames %in% names(filtered_bp_bb))
+
+kept_columns_df %>%
+  kable(col.names = c("Variable Name", "Description"),
+        caption = "Kept Variables and Their Descriptions") %>%
+  print()
+```
+```{r}
+kept_columns_df <- kept_columns_df %>% 
+  filter(VariableNames %in% c("ABSPID",
+    "EXLWTBC", "EXLWMBC", "EXLWVBC", "ALCT1","ALCT2","EIBMR1", "EIBMR2", "CHOWSAT1", "CHOWSAT2", "CHOWOAT1", "CHOWOAT2", "DIETRDI", "SMKSTAT","PEFRESD1","PEFRESD2"
+  ))
+
+gt_table <- gt(kept_columns_df) %>%
+  tab_header(
+    title = "Confounding variables")
+  
+
+# Display the gt table
+gt_table
+```
+```{r}
+merged_df <- merge(raw_bb, raw_bp, by = "ABSPID")
+
+columns_to_keep <- kept_columns_df$VariableNames
+columns_to_keep <- as.character(columns_to_keep)
+filtered_merged_df <- merged_df[, colnames(merged_df) %in% columns_to_keep]
+
+
+write.csv(filtered_merged_df, "MergedData.csv", row.names = FALSE)
+
+unique_counts <- sapply(filtered_merged_df, function(x) length(unique(x)))
+
+continuous_vars <- names(unique_counts[unique_counts > 17 & unique_counts < 1000])
+factor_vars <- names(unique_counts[unique_counts <= 17])
+
+filtered_merged_df[continuous_vars] <- lapply(filtered_merged_df[continuous_vars], as.integer)
+
+filtered_merged_df[factor_vars] <- lapply(filtered_merged_df[factor_vars], as.factor)
+
+magic_vals <- c(0)
+
+for (col in names(filtered_merged_df)) {
+  if (is.factor(filtered_merged_df[[col]])) {
+    filtered_merged_df[[col]] <- as.character(filtered_merged_df[[col]])
+    filtered_merged_df[[col]][filtered_merged_df[[col]] %in% as.character(magic_vals)] <- NA
+    filtered_merged_df[[col]] <- as.factor(filtered_merged_df[[col]])
+  }
+  
+}
+unique_counts <- sapply(filtered_merged_df, function(x) length(unique(x)))
+
+# Redefine continuous_vars as numeric variables with more than 17 unique values
+continuous_vars <- names(unique_counts[unique_counts > 17 & sapply(filtered_merged_df, is.numeric)])
+magic_vals_numeric <- c(9998, 9999, 9996, 9997, 999, 998, 997, 996)
+
+# Function to replace specified values with NA
+replace_with_na <- function(x) {
+  x[x %in% magic_vals_numeric] <- NA
+  return(x)
+}
+
+# Apply the function only to the numeric (continuous) variables
+filtered_merged_df[continuous_vars] <- lapply(filtered_merged_df[continuous_vars], replace_with_na)
+
+
+
+str(filtered_merged_df)
+```
+
+```{r}
+Confounding <- filtered_merged_df
+save(Confounding, file = "Confounding_Cleaned.RData")
+load("ResponseVariables_Cleaned.RData")
+```
+
+```{r}
+dataset1 <- as.data.frame(Confounding)
+dataset2 <- as.data.frame(main)
+summary(main)
+# Now try to merge again
+merged_df <- merge(dataset1, dataset2, by = "ABSPID", all = FALSE)
+
+# Drop rows with NA values
+cleaned_df <- na.omit(merged_df)
+
+dim(cleaned_df)
+```
+
+
+```{r}
+complete <- cleaned_df
+save(complete2, file = "Completedata2.RData")
+```
+
+```{r}
+dims <- data.frame(
+  Description = c("Rows", "Columns"),
+  Value = dim(cleaned_df)
+)
+
+# Display the dimensions in a table using gt
+dims %>%
+  gt() %>%
+  tab_header(
+    title = "Dimensions of the complete dataset"
+  )
+```
+
+```{r}
+# For tidy summaries of models
+library(nnet)
+# Load necessary libraries
+library(stats)
+library(broom)
+
+multinom_model <- multinom(GLUCFREB ~ AGEC + SEX + WHOLGR1N + REFGRA1N
+, data = cleaned_df)
+summary(multinom_model)
+
+
+```
+

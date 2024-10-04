@@ -1,0 +1,8 @@
+---
+title: "Final_data_clean"
+author: "miaomiao Chen"
+date: "2024-10-04"
+output: html_document
+---
+# First of all load in the data
+We first load in the useful data sets we need including the 

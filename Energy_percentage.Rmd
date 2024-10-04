@@ -1,0 +1,119 @@
+---
+title: "Energy_percentage"
+author: "miaomiao Chen"
+date: "2024-09-27"
+output: html_document
+---
+
+```{r,setup, include=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+```
+
+# reading data
+
+```{r}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+bp_bb <- inner_join(raw_bp, raw_bb, by = "ABSPID")
+
+raw_bsp <- read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+raw_bcn <- read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
+raw_bhh <- read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
+
+
+
+
+household_id_column <- "ABSHID"  # Replace with your actual column name
+social_status_column <- "SF2SA1DB"     # This is the column to merge from `bhh`
+
+# Perform the left join to add the social status from `bhh` to `bsp`
+merged_bsp <- raw_bsp %>%
+  left_join(select(raw_bhh, all_of(c(household_id_column, social_status_column))), 
+            by = household_id_column)
+
+composite_key <- c("ABSHID", "ABSGID")
+
+# Perform the left join using both keys
+bsp_bcn_bhh <- merged_bsp %>%
+  left_join(raw_bcn, by = composite_key)
+
+
+
+bsp_bcn_bhh <- bsp_bcn_bhh %>%
+  rename(ABSPID = ABSHID,AGEC =AGEEC)
+
+```
+
+
+# Select useful variables
+
+```{r}
+selected_variables <- bp_bb %>%
+  select(
+    ABSPID, HYPBC, SYSTOL, DIASTOL, POTAST1, POTAST2, SODIUMT1, SODIUMT2,
+    AGEC, SEX, BMISC, SABDYMS,SF2SA1QN,
+    PROPER1, FATPER1, LAPER1, ALAPER1, CHOPER1, 
+    SUGPER1, STARPER1, ALCPER1, SATPER1, TRANPER1, 
+    FIBRPER1, MONOPER1, POLYPER1,
+    PROPER2, FATPER2, LAPER2, ALAPER2, CHOPER2, 
+    SUGPER2, STARPER2, ALCPER2, SATPER2, TRANPER2, 
+    FIBRPER2, MONOPER2, POLYPER2
+  )
+
+# View the first few rows of the merged dataset
+summary(selected_variables)
+```
+
+
+```{r}
+selected_variables
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+selected_variables2 <- bsp_bcn_bhh %>%
+  select(
+    ABSPID, ICD10ME, SYSTOL, DIASTOL, POTAST1, POTAST2, SODIUMT1, SODIUMT2,
+    AGEC, SEX, BMISC, SABDYMS, 
+    PROPER1, FATPER1, LAPER1, ALAPER1, CHOPER1, 
+    SUGPER1, STARPER1, ALCPER1, SATPER1, TRANPER1, 
+    FIBRPER1, MONOPER1, POLYPER1,
+    PROPER2, FATPER2, LAPER2, ALAPER2, CHOPER2, 
+    SUGPER2, STARPER2, ALCPER2, SATPER2, TRANPER2, 
+    FIBRPER2, MONOPER2, POLYPER2
+  )
+
+selected_variables2 
+```
+
+
+
+
+
+
+
+
+
+

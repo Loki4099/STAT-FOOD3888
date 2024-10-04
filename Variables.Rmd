@@ -142,5 +142,5 @@ filtered_merged_df <- filtered_merged_df[, !(names(filtered_merged_df) %in% c("A
 str(filtered_merged_df)
 data <- filtered_merged_df
 save(data, file = "ResponseVariables_Cleaned.RData")
->>>>>>> cb0b38266cb12dcf44fd36d225adc1d8d1fa3841
+
 ```

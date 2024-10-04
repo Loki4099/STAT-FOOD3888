@@ -1,0 +1,113 @@
+---
+title: "Untitled"
+author: "miaomiao Chen"
+date: "2024-09-11"
+output: html_document
+---
+```{r libraries}
+# Load in all libraries
+library(tidyverse)
+library(here)      # directory referencing
+library(readxl)    # reading Excel files
+library(janitor)   # data cleaning 
+library(stringr)   # string manimpuation
+library(tidyr)  
+library(gt) # new tidy functions
+```
+
+
+
+```{r}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+
+merged_df <- merge(raw_bb, raw_bp, by = "ABSPID")
+```
+
+
+
+```{r}
+X_all_File_variables <- read_excel("ZIPallFiles/_all.File.variables.xlsx", 
+    sheet = "Variables", col_names = FALSE)
+
+X_all_File_variables <- X_all_File_variables %>%
+  rename(
+    Survey = `...1`,
+    Name = `...2`,
+    VariableNames = `...3`,
+    Description = `...4`
+  ) %>%
+  filter(Name %in% c("AHSnpa11bp", "AHSnpa11ba"))
+
+X_all_File_variables
+```
+
+
+
+
+Useful variables:
+
+**Response variables:**
+SYSTOL - Systolic blood pressure (mmHg)    998 999
+DIASTOL - Diastolic blood pressure (mmHg)   998 999
+BPCAT - Blood Pressure categories (for adults 18 years and older) 0 6 7
+
+**Covariate variables:**
+
+Lifestyle Factors:
+
+SMKDAILY - Daily smoker status  0
+ALCT1 -	Alcohol (total) Day 1 g    0-999
+ALCT2	- Alcohol (total) Day 2 g   0-999
+EXREGUIC - Whether physical activity last week met 150 minutes recommended guidelines   0 9
+SLPTIME - Sleep duration in minutes on the day prior to the interview  9998 9999
+
+Biophysical Measures:
+
+BMR	- Basal metabolic rate  99998
+BMISC - Body mass index (BMI) - score measured  0 98 99 
+
+Socio-Demographic Factors:
+
+AGEC - Age of person 
+SEX - Sex of person 
+INCDEC - Equivalised income of household: deciles 0 98 99
+
+
+```{r}
+str(merged_df)
+```
+
+
+
+
+```{r}
+load("Correct.Rdata")
+
+```
+
+
+```{r}
+str(correct_data)
+```
+
+```{r}
+# Load necessary library
+library(gt)
+
+# Assuming 'data' is your dataset
+# Create a data frame that captures the variable names and their types
+variable_info <- data.frame(
+  VariableName = names(correct_data),
+  VariableType = sapply(correct_data, class)
+)
+
+# Generate the table using gt
+gt_table <- gt(variable_info)
+
+# Print the table
+print(gt_table)
+```
+
+
+
