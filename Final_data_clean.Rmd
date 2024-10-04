@@ -348,7 +348,7 @@ ggscatmat(a)
 #           colors = c("blue", "white", "red"),
 #           tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
 ```
-## PCA
+## 1.2 PCA
 
 ```{r}
 data_pca <- filtered_data %>%
@@ -360,7 +360,7 @@ pcaResult <- as.data.frame(pca_result$rotation)
 pcaResult
 ```
 
-## Logistic regression
+## 1.3 Logistic regression
 ```{r}
 numeric_cols <- sapply(filtered_data, is.numeric)  
 
@@ -374,7 +374,7 @@ summary(r)
 ```
 
 
-
+# 
 
 
 
