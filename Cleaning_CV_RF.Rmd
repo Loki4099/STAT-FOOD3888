@@ -477,7 +477,7 @@ rf_cv_model <- train(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCP
                      ntree = 500)        # Number of trees in the forest
 
 # Print the model
-print(rf_cv_model)
+# print(rf_cv_model)
 
 # Retrieve the predictions from the cross-validation process
 predictions <- rf_cv_model$pred
@@ -508,39 +508,54 @@ importance_values <- varImp(rf_cv_model)
 # Plot the importance of variables
 plot(importance_values, main = "Variable Importance - Random Forest")
 
-varImpPlot(rf_cv_model)
+
+
+# Extract the Random Forest model from the caret train object
+final_rf_model <- rf_cv_model$finalModel
+
+# Use varImpPlot on the extracted randomForest model
+varImpPlot(final_rf_model)
 ```
+
 
 
 ```{r}
-# Generate PDP for each class of Hypertension
-pdp_class0 <- pdp::partial(rf_cv_model, pred.var = "AGEC", prob = TRUE, 
-                           plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+# Define the variables for which you want to generate PDP
+variables <- c("AGEC", "BMISC", "CHOPER", "PS_Ratio", "FIBRPER", "ALCPER")
 
-pdp_class1 <- pdp::partial(rf_cv_model, pred.var = "AGEC", prob = TRUE, 
-                           plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-
-
-# Set up color palette for the 2 classes
+# Set up color palette for the two classes
 pal <- c("blue", "red")
 
-# Plot using base R
-plot(NA, xlim = range(normalized_data$AGEC), ylim = c(0, 1), 
-     main = "PDP for AGEC Predicting Hypertension", ylab = "Partial Dependence", xlab = "AGEC")
+# Set up a 2x3 grid layout for plotting multiple PDPs
+par(mfrow = c(2, 3))  # 2 rows, 3 columns
 
-# Draw lines for both classes
-lines(pdp_class0, col = pal[1], lwd = 2)
-lines(pdp_class1, col = pal[2], lwd = 2)
+# Loop through each variable to plot the PDP for each one
+for (var in variables) {
+  
+  # Generate PDP for class 0 (Hypertension = 0)
+  pdp_class0 <- pdp::partial(rf_cv_model, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+  
+  # Generate PDP for class 1 (Hypertension = 1)
+  pdp_class1 <- pdp::partial(rf_cv_model, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
+  
+  # Plot each variable's PDP using base R
+  plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
+       main = paste("PDP for", var, "Predicting Hypertension"), 
+       ylab = "Partial Dependence", xlab = var)
+  
+  # Draw lines for both classes
+  lines(pdp_class0, col = pal[1], lwd = 2)
+  lines(pdp_class1, col = pal[2], lwd = 2)
+  
+  # Add legend to differentiate between the two classes
+  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
+}
 
-# Add legend to differentiate between the two classes
-legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
+# Reset the plotting layout back to default
+par(mfrow = c(1, 1))
+
 ```
-
-
- 
- 
-
-
-
 
 
