@@ -537,7 +537,8 @@ legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal,
 ```
 
 
-
+ 
+ 
 
 
 
