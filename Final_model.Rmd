@@ -330,28 +330,29 @@ As some of those outliers are stil plausible values, we still want to keep them,
 
 
 ```{r}
-
-normal_ranges <- list( SYSTOL = c(70, 220),  
-                       DIASTOL = c(40, 130), 
-                       BMISC = c(10, 55),
-                       POTAST = c(1000,7500),
-                       SODIUMT = c(500,6500),
-                       ALCPER = c(0, 30),
-                       CHOPER = c(10, 80)
+normal_ranges <- list( SYSTOL = c(90, 180),  
+                       DIASTOL = c(60, 120), 
+                       BMISC = c(16, 47.5),
+                       PS_Ratio=c(0,4),
+                       ALCPER = c(0, 90),
+                       CHOPER = c(0, 100),
+                       FIBRPER = c(0, 100)
                        ) 
                        
 filtered_data <- selected_data %>%
+  mutate(
+    PS_Ratio = SODIUMT/POTAST
+  )%>%
   filter(
     SYSTOL >= normal_ranges$SYSTOL[1] & SYSTOL <= normal_ranges$SYSTOL[2],
     DIASTOL >= normal_ranges$DIASTOL[1] & DIASTOL <= normal_ranges$DIASTOL[2],
     BMISC >= normal_ranges$BMISC[1] & BMISC <= normal_ranges$BMISC[2],
-    POTAST >= normal_ranges$POTAST[1] & POTAST <= normal_ranges$POTAST[2],
-    SODIUMT >= normal_ranges$SODIUMT[1] & SODIUMT <= normal_ranges$SODIUMT[2],
     ALCPER>= normal_ranges$ALCPER[1] & ALCPER <= normal_ranges$ALCPER[2],
-    CHOPER >= normal_ranges$CHOPER[1] & CHOPER <= normal_ranges$CHOPER[2]
+    CHOPER >= normal_ranges$CHOPER[1] & CHOPER <= normal_ranges$CHOPER[2],
+    FIBRPER >= normal_ranges$FIBRPER[1] & FIBRPER <= normal_ranges$FIBRPER[2],
+    PS_Ratio >= normal_ranges$PS_Ratio[1] & PS_Ratio <= normal_ranges$PS_Ratio[2]
   )
-
-filtered_data
+filtered_data 
 ```
 
 
@@ -446,64 +447,140 @@ svm_model <- svm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER +
 svm_model
 ```
 
+
+
 # Model comparison (5-fold cross validation)
 
 Then we done the cross validation for three models, as for the validity we perform all cross validation for three models base on the same 5 folds 
 
 
-
 ```{r}
-# Set a seed for reproducibility
+
 set.seed(123)
+k_folds <- 5
+folds <- createFolds(normalized_data$Hypertension, k = k_folds, list = TRUE, returnTrain = FALSE)
 
-# Create the 5-fold cross-validation indices to ensure the same fold structure for all models
-folds <- createFolds(normalized_data$Hypertension, k = 5, returnTrain = TRUE)
+# Initialize variables to store performance results
+logistic_accuracy <- numeric(k_folds)
+logistic_f1 <- numeric(k_folds)
 
-# Define train control with fixed indices for cross-validation
-train_control <- trainControl(method = "cv", 
-                              index = folds,  # Use the same folds for each model
-                              savePredictions = "final")
+rf_accuracy <- numeric(k_folds)
+rf_f1 <- numeric(k_folds)
 
+svm_accuracy <- numeric(k_folds)
+svm_f1 <- numeric(k_folds)
 
-
-### Logistic Regression ###
-logistic_model <- train(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
-                        data = normalized_data, 
-                        method = "glm", 
-                        family = binomial(), 
-                        trControl = train_control,
-                        metric = "Accuracy")
+# Helper function to ensure factor levels match
+ensure_factor_levels <- function(predictions, reference) {
+  # Ensure predictions have the same levels as the reference
+  factor(predictions, levels = levels(reference))
+}
 
 
-### Random Forest ###
-rf_model <- train(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
-                  data = normalized_data, 
-                  method = "rf", 
-                  trControl = train_control,
-                  tuneLength = 5,  # Number of different mtry values to try (for tuning)
-                  metric = "Accuracy",
-                  ntree = 500)  # Number of trees
+for (i in 1:k_folds) {
+  
+  # Split into training and testing sets
+  test_indices <- folds[[i]]
+  test_data <- normalized_data[test_indices, ]
+  train_data <- normalized_data[-test_indices, ]
+  
+  ### Logistic Regression ###
+  log_model <- glm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
+                   data = train_data, family = binomial())
+  log_predictions <- predict(log_model, test_data, type = "response")
+  log_class <- ifelse(log_predictions > 0.5, 1, 0)
+  log_class <- ensure_factor_levels(log_class, test_data$Hypertension)
+  
+  # Compute accuracy and F1 score for logistic regression
+  log_conf_matrix <- confusionMatrix(log_class, test_data$Hypertension, positive = "1")
+  
+  # Store accuracy and F1 score
+  logistic_accuracy[i] <- log_conf_matrix$overall['Accuracy']
+  logistic_f1[i] <- log_conf_matrix$byClass['F1']
+  
+  
+   ### Random Forest ###
+  rf_model <- randomForest(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio,
+                           data = train_data, 
+                           ntree = 500)
+  
+  # Get predictions for random forest
+  rf_predictions <- predict(rf_model, test_data)
+  
+  # Ensure factor levels match before creating confusion matrix
+  rf_predictions <- ensure_factor_levels(rf_predictions, test_data$Hypertension)
+  
+  # Compute accuracy and F1 score for Random Forest
+  rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$Hypertension, positive = "1")
+  
+  # Store accuracy and F1 score
+  rf_accuracy[i] <- rf_conf_matrix$overall['Accuracy']
+  rf_f1[i] <- rf_conf_matrix$byClass['F1']
+  
+  ### SVM ###
+  # One-hot encode categorical variables for SVM model
+  dummy_model <- dummyVars(~ . - Hypertension - ABSPID - ABSHID - BP_Category - SYSTOL - DIASTOL, data = train_data)
+  encoded_train_data <- as.data.frame(predict(dummy_model, newdata = train_data))
+  encoded_test_data <- as.data.frame(predict(dummy_model, newdata = test_data))
+  encoded_train_data$Hypertension <- train_data$Hypertension
+  encoded_test_data$Hypertension <- test_data$Hypertension
+  
+  # Fit the SVM model with one-hot encoded data
+  svm_model <- svm(Hypertension ~ ., 
+                   data = encoded_train_data, 
+                   kernel = "radial",  
+                   cost = 1,  
+                   gamma = 0.1)
+  
+  # Get predictions for SVM
+  svm_predictions <- predict(svm_model, encoded_test_data)
+  
+  # Ensure factor levels match before creating confusion matrix
+  svm_predictions <- ensure_factor_levels(svm_predictions, encoded_test_data$Hypertension)
+  
+  # Compute accuracy and F1 score for SVM
+  svm_conf_matrix <- confusionMatrix(svm_predictions, encoded_test_data$Hypertension, positive = "1")
+  
+  # Store accuracy and F1 score
+  svm_accuracy[i] <- svm_conf_matrix$overall['Accuracy']
+  svm_f1[i] <- svm_conf_matrix$byClass['F1']
+}
 
-### SVM ###
-svm_model <- train(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
-                   data = normalized_data, 
-                   method = "svmRadial", 
-                   trControl = train_control,
-                   tuneLength = 5,  # Number of gamma and cost values to try
-                   metric = "Accuracy")
+# Calculate the average accuracy and F1 score across the 5 folds for logistic regression
+avg_logistic_accuracy <- mean(logistic_accuracy)
+avg_logistic_f1 <- mean(logistic_f1)
 
-# Compare the performance of the models
-results <- resamples(list(Logistic = logistic_model, RandomForest = rf_model, SVM = svm_model))
+# Calculate the average accuracy and F1 score across the 5 folds for random forest
+avg_rf_accuracy <- mean(rf_accuracy)
+avg_rf_f1 <- mean(rf_f1)
 
-# Summary of results (average accuracy, F1 score, etc. for each model)
-summary(results)
+# Calculate the average accuracy and F1 score across the 5 folds for SVM
+avg_svm_accuracy <- mean(svm_accuracy)
+avg_svm_f1 <- mean(svm_f1)
 
-# Boxplot comparison of accuracy across folds for each model
-bwplot(results, metric = "Accuracy")
-
-# Boxplot comparison of F1 score across folds for each model
-bwplot(results, metric = "F1")
+# Print the results
+cat("Logistic Regression - Average Accuracy:", avg_logistic_accuracy, " Average F1 Score:", avg_logistic_f1, "\n")
+cat("Random Forest - Average Accuracy:", avg_rf_accuracy, " Average F1 Score:", avg_rf_f1, "\n")
+cat("SVM - Average Accuracy:", avg_svm_accuracy, " Average F1 Score:", avg_svm_f1, "\n")
 ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
