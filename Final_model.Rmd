@@ -39,6 +39,11 @@ library(pdp)
 library(e1071)  
 library(dplyr) 
 library(caret)
+library(plotly)
+library(stargazer)
+library(broom)
+library(knitr)
+library(kableExtra)
 ```
 
 
@@ -433,12 +438,18 @@ rf_model
 
 
 ## Section 3 SVM
-
-
 ```{r}
+
+dummy_model <- dummyVars(~ . - Hypertension - ABSPID - ABSHID - BP_Category - SYSTOL - DIASTOL, data = normalized_data)
+
+encoded_data <- as.data.frame(predict(dummy_model, newdata = normalized_data))
+
+final_data <- as.data.frame(cbind(encoded_data, Hypertension = normalized_data$Hypertension))
+
 set.seed(123)
-svm_model <- svm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
-                 data = normalized_data, 
+
+svm_model <- svm(Hypertension ~ ., 
+                 data = final_data,  
                  kernel = "radial",  
                  cost = 1,  
                  gamma = 0.1)  
@@ -446,6 +457,8 @@ svm_model <- svm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER +
 
 svm_model
 ```
+
+
 
 
 
@@ -457,127 +470,15 @@ Measurements decision:
 
 1. Accuracy: As the response variable(hypertension) is balanced in our dataset, we consider the accuracy is plausible in the comparison
 
-2. F1-score: 
-
-3. Sensitivity: As the respons variable is the risk of the disease, we wanna reduce the case that the person is actually have risk of hypertension but been predict as not have any risk, so in this case we want to have a smallest Type II error(false negative), sensitivity would be the best measurement in this case.
+2. Sensitivity: As the respons variable is the risk of the disease, we wanna reduce the case that the person is actually have risk of hypertension but been predict as not have any risk, so in this case we want to have a smallest Type II error(false negative), sensitivity would be the best measurement in this case.
 
 
-
-```{r}
-
-set.seed(123)
-k_folds <- 5
-folds <- createFolds(normalized_data$Hypertension, k = k_folds, list = TRUE, returnTrain = FALSE)
-
-# Initialize variables to store performance results
-logistic_accuracy <- numeric(k_folds)
-logistic_f1 <- numeric(k_folds)
-
-rf_accuracy <- numeric(k_folds)
-rf_f1 <- numeric(k_folds)
-
-svm_accuracy <- numeric(k_folds)
-svm_f1 <- numeric(k_folds)
-
-# Helper function to ensure factor levels match
-ensure_factor_levels <- function(predictions, reference) {
-  # Ensure predictions have the same levels as the reference
-  factor(predictions, levels = levels(reference))
-}
-
-
-for (i in 1:k_folds) {
-  
-  # Split into training and testing sets
-  test_indices <- folds[[i]]
-  test_data <- normalized_data[test_indices, ]
-  train_data <- normalized_data[-test_indices, ]
-  
-  ### Logistic Regression ###
-  log_model <- glm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
-                   data = train_data, family = binomial())
-  log_predictions <- predict(log_model, test_data, type = "response")
-  log_class <- ifelse(log_predictions > 0.5, 1, 0)
-  log_class <- ensure_factor_levels(log_class, test_data$Hypertension)
-  
-  # Compute accuracy and F1 score for logistic regression
-  log_conf_matrix <- confusionMatrix(log_class, test_data$Hypertension, positive = "1")
-  
-  # Store accuracy and F1 score
-  logistic_accuracy[i] <- log_conf_matrix$overall['Accuracy']
-  logistic_f1[i] <- log_conf_matrix$byClass['F1']
-  
-  
-   ### Random Forest ###
-  rf_model <- randomForest(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio,
-                           data = train_data, 
-                           ntree = 500)
-  
-  # Get predictions for random forest
-  rf_predictions <- predict(rf_model, test_data)
-  
-  # Ensure factor levels match before creating confusion matrix
-  rf_predictions <- ensure_factor_levels(rf_predictions, test_data$Hypertension)
-  
-  # Compute accuracy and F1 score for Random Forest
-  rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$Hypertension, positive = "1")
-  
-  # Store accuracy and F1 score
-  rf_accuracy[i] <- rf_conf_matrix$overall['Accuracy']
-  rf_f1[i] <- rf_conf_matrix$byClass['F1']
-  
-  ### SVM ###
-  # One-hot encode categorical variables for SVM model
-  dummy_model <- dummyVars(~ . - Hypertension - ABSPID - ABSHID - BP_Category - SYSTOL - DIASTOL, data = train_data)
-  encoded_train_data <- as.data.frame(predict(dummy_model, newdata = train_data))
-  encoded_test_data <- as.data.frame(predict(dummy_model, newdata = test_data))
-  encoded_train_data$Hypertension <- train_data$Hypertension
-  encoded_test_data$Hypertension <- test_data$Hypertension
-  
-  # Fit the SVM model with one-hot encoded data
-  svm_model <- svm(Hypertension ~ ., 
-                   data = encoded_train_data, 
-                   kernel = "radial",  
-                   cost = 1,  
-                   gamma = 0.1)
-  
-  # Get predictions for SVM
-  svm_predictions <- predict(svm_model, encoded_test_data)
-  
-  # Ensure factor levels match before creating confusion matrix
-  svm_predictions <- ensure_factor_levels(svm_predictions, encoded_test_data$Hypertension)
-  
-  # Compute accuracy and F1 score for SVM
-  svm_conf_matrix <- confusionMatrix(svm_predictions, encoded_test_data$Hypertension, positive = "1")
-  
-  # Store accuracy and F1 score
-  svm_accuracy[i] <- svm_conf_matrix$overall['Accuracy']
-  svm_f1[i] <- svm_conf_matrix$byClass['F1']
-}
-
-# Calculate the average accuracy and F1 score across the 5 folds for logistic regression
-avg_logistic_accuracy <- mean(logistic_accuracy)
-avg_logistic_f1 <- mean(logistic_f1)
-
-# Calculate the average accuracy and F1 score across the 5 folds for random forest
-avg_rf_accuracy <- mean(rf_accuracy)
-avg_rf_f1 <- mean(rf_f1)
-
-# Calculate the average accuracy and F1 score across the 5 folds for SVM
-avg_svm_accuracy <- mean(svm_accuracy)
-avg_svm_f1 <- mean(svm_f1)
-
-# Print the results
-cat("Logistic Regression - Average Accuracy:", avg_logistic_accuracy, " Average F1 Score:", avg_logistic_f1, "\n")
-cat("Random Forest - Average Accuracy:", avg_rf_accuracy, " Average F1 Score:", avg_rf_f1, "\n")
-cat("SVM - Average Accuracy:", avg_svm_accuracy, " Average F1 Score:", avg_svm_f1, "\n")
-```
 
 
 
 
 ```{r}
-set.seed(3888)
+set.seed(1234)
 k_folds <- 5
 folds <- createFolds(normalized_data$Hypertension, k = k_folds, list = TRUE, returnTrain = FALSE)
 
@@ -689,19 +590,95 @@ avg_svm_f1 <- mean(svm_f1)
 avg_svm_sensitivity <- mean(svm_sensitivity)
 
 # Print the results
-cat("Logistic Regression - Average Accuracy:", avg_logistic_accuracy, " Average F1 Score:", avg_logistic_f1, " Average Sensitivity:", avg_logistic_sensitivity, "\n")
-cat("Random Forest - Average Accuracy:", avg_rf_accuracy, " Average F1 Score:", avg_rf_f1, " Average Sensitivity:", avg_rf_sensitivity, "\n")
-cat("SVM - Average Accuracy:", avg_svm_accuracy, " Average F1 Score:", avg_svm_f1, " Average Sensitivity:", avg_svm_sensitivity, "\n")
+cat("Logistic Regression - Average Accuracy:", avg_logistic_accuracy, " Average Sensitivity:", avg_logistic_sensitivity, "\n")
+cat("Random Forest - Average Accuracy:", avg_rf_accuracy,  " Average Sensitivity:", avg_rf_sensitivity, "\n")
+cat("SVM - Average Accuracy:", avg_svm_accuracy, " Average Sensitivity:", avg_svm_sensitivity, "\n")
 
 ```
 
 
+```{r}
 
 
+# Data for plotting
+models <- c("Logistic Regression", "Random Forest", "SVM")
+avg_accuracies <- c(avg_logistic_accuracy, avg_rf_accuracy, avg_svm_accuracy)  # Replace with actual values
+avg_sensitivities <- c(avg_logistic_sensitivity, avg_rf_sensitivity, avg_svm_sensitivity)  # Replace with actual values
+
+# Create plotly figure
+fig <- plot_ly()
+
+# Add line for accuracy
+fig <- fig %>% add_trace(x = models, y = avg_accuracies, type = 'scatter', mode = 'lines+markers',
+                         name = 'Accuracy', line = list(color = 'lightblue', width = 3),
+                         marker = list(size = 10))
+
+# Add line for sensitivity
+fig <- fig %>% add_trace(x = models, y = avg_sensitivities, type = 'scatter', mode = 'lines+markers',
+                         name = 'Sensitivity', line = list(color = 'salmon', width = 3),
+                         marker = list(size = 10))
+
+# Customize layout, including y-axis range
+fig <- fig %>% layout(title = "Model Comparison: Accuracy vs Sensitivity",
+                      xaxis = list(title = "Model"),
+                      yaxis = list(title = "Score", range = c(0.6, 0.8)),  # Adjust y-axis range
+                      legend = list(title = list(text = "Metrics")),
+                      font = list(family = "Arial", size = 14, color = "RebeccaPurple"))
+
+# Display the plot
+fig
 
 
+```
 
+Final model choose: logistic regression
 
+# Interpretation on the final model
+
+```{r}
+
+# Train the logistic regression model
+final_log_model <- glm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
+                       data = normalized_data, family = binomial())
+
+# Tidy up the model results using broom
+tidy_log_model <- tidy(final_log_model, conf.int = TRUE)  # Add confidence intervals
+
+# Display the table in a well-formatted way using kableExtra
+tidy_log_model %>%
+  kable(format = "html", digits = 3, 
+        col.names = c("Term", "Estimate", "Std. Error", "z value", "P-value", "Conf. Low", "Conf. High")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE) %>%
+  save_kable("logistic_regression_output.html")
+```
+
+```{r message= FALSE}
+
+odds_ratios <- exp(coef(final_log_model))
+conf_intervals <- exp(confint(final_log_model))
+
+# Create a data frame for plotting
+coef_data <- data.frame(
+  Predictor = names(odds_ratios),
+  OddsRatio = odds_ratios,
+  LowerCI = conf_intervals[, 1],
+  UpperCI = conf_intervals[, 2]
+)
+
+# Plot the odds ratios
+ggplot(coef_data, aes(x = Predictor, y = OddsRatio)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = LowerCI, ymax = UpperCI), width = 0.2) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  coord_flip() +  # Flip coordinates for a better view
+  labs(title = "Odds Ratios with 95% Confidence Intervals",
+       y = "Odds Ratio", x = "Predictor")
+```
+
+```{r}
+install.packages("stargazer")
+
+```
 
 
 
