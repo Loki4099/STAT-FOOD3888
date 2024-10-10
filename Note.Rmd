@@ -1,0 +1,144 @@
+# variable needs to have a readable variable name
+
+```{r}
+set.seed(1234)
+k_folds <- 5
+folds <- createFolds(normalized_data$Hypertension, k = k_folds, list = TRUE, returnTrain = FALSE)
+
+# Initialize variables to store performance results
+logistic_specificity <- numeric(k_folds)
+logistic_precision <- numeric(k_folds)
+logistic_kappa <- numeric(k_folds)
+
+rf_specificity <- numeric(k_folds)
+rf_precision <- numeric(k_folds)
+rf_kappa <- numeric(k_folds)
+
+svm_specificity <- numeric(k_folds)
+svm_precision <- numeric(k_folds)
+svm_kappa <- numeric(k_folds)
+
+# Helper function to ensure factor levels match
+ensure_factor_levels <- function(predictions, reference) {
+  # Ensure predictions have the same levels as the reference
+  factor(predictions, levels = levels(reference))
+}
+
+
+for (i in 1:k_folds) {
+  
+  # Split into training and testing sets
+  test_indices <- folds[[i]]
+  test_data <- normalized_data[test_indices, ]
+  train_data <- normalized_data[-test_indices, ]
+  
+  ### Logistic Regression ###
+  log_model <- glm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio, 
+                   data = train_data, family = binomial())
+  log_predictions <- predict(log_model, test_data, type = "response")
+  log_class <- ifelse(log_predictions > 0.5, 1, 0)
+  log_class <- ensure_factor_levels(log_class, test_data$Hypertension)
+  
+  # Compute accuracy, F1 score, and sensitivity for logistic regression
+  log_conf_matrix <- confusionMatrix(log_class, test_data$Hypertension, positive = "1")
+  logistic_accuracy[i] <- log_conf_matrix$overall['Accuracy']
+  logistic_f1[i] <- log_conf_matrix$byClass['F1']
+  logistic_sensitivity[i] <- log_conf_matrix$byClass['Sensitivity']
+  logistic_specificity[i] <- log_conf_matrix$byClass['Specificity']
+  logistic_precision[i] <- log_conf_matrix$byClass['Precision']
+  
+  
+   ### Random Forest ###
+  rf_model <- randomForest(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio,
+                           data = train_data, 
+                           ntree = 500)
+  
+  # Get predictions for random forest
+  rf_predictions <- predict(rf_model, test_data)
+  
+  # Ensure factor levels match before creating confusion matrix
+  rf_predictions <- ensure_factor_levels(rf_predictions, test_data$Hypertension)
+  
+  # Compute accuracy, F1 score, and sensitivity for Random Forest
+  rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$Hypertension, positive = "1")
+  
+  # Store accuracy, F1 score, and sensitivity
+  rf_accuracy[i] <- rf_conf_matrix$overall['Accuracy']
+  rf_f1[i] <- rf_conf_matrix$byClass['F1']
+  rf_sensitivity[i] <- rf_conf_matrix$byClass['Sensitivity']
+  rf_specificity[i] <- rf_conf_matrix$byClass['Specificity']
+  rf_precision[i] <- rf_conf_matrix$byClass['Precision']
+  
+  ### SVM ###
+  # One-hot encode categorical variables for SVM model
+  dummy_model <- dummyVars(~ . - Hypertension - ABSPID - ABSHID - BP_Category - SYSTOL - DIASTOL, data = train_data)
+  encoded_train_data <- as.data.frame(predict(dummy_model, newdata = train_data))
+  encoded_test_data <- as.data.frame(predict(dummy_model, newdata = test_data))
+  encoded_train_data$Hypertension <- train_data$Hypertension
+  encoded_test_data$Hypertension <- test_data$Hypertension
+  
+  # Fit the SVM model with one-hot encoded data
+  svm_model <- svm(Hypertension ~ ., 
+                   data = encoded_train_data, 
+                   kernel = "radial",  
+                   cost = 1,  
+                   gamma = 0.1)
+  
+  # Get predictions for SVM
+  svm_predictions <- predict(svm_model, encoded_test_data)
+  
+  # Ensure factor levels match before creating confusion matrix
+  svm_predictions <- ensure_factor_levels(svm_predictions, encoded_test_data$Hypertension)
+  
+  # Compute accuracy, F1 score, and sensitivity for SVM
+  svm_conf_matrix <- confusionMatrix(svm_predictions, encoded_test_data$Hypertension, positive = "1")
+  
+  # Store accuracy, F1 score, and sensitivity
+  svm_accuracy[i] <- svm_conf_matrix$overall['Accuracy']
+  svm_f1[i] <- svm_conf_matrix$byClass['F1']
+  svm_sensitivity[i] <- svm_conf_matrix$byClass['Sensitivity']
+  svm_specificity[i] <- svm_conf_matrix$byClass['Specificity']
+  svm_precision[i] <- svm_conf_matrix$byClass['Precision']
+}
+
+# Calculate average metrics across the folds for logistic regression
+ave_logistic_accuarcy <- mean(logistic_accuracy)
+ave_logistic_f1 <- mean(logistic_f1)
+ave_logistic_sensitivity <- mean(logistic_sensitivity)
+avg_logistic_specificity <- mean(logistic_specificity)
+avg_logistic_precision <- mean(logistic_precision)
+
+# Calculate average metrics across the folds for random forest
+ave_rf_accuarcy <- mean(rf_accuracy)
+ave_rf_f1 <- mean(rf_f1)
+ave_logistic_sensitivity <- mean(rf_sensitivity)
+avg_rf_specificity <- mean(rf_specificity)
+avg_rf_precision <- mean(rf_precision)
+
+# Calculate average metrics across the folds for SVM
+ave_svm_accuarcy <- mean(svm_accuracy)
+ave_svm_f1 <- mean(svm_f1)
+ave_svm_sensitivity <- mean(svm_sensitivity)
+avg_svm_specificity <- mean(svm_specificity)
+avg_svm_precision <- mean(svm_precision)
+```
+
+```{r}
+# Load necessary libraries
+library(kableExtra)
+
+# Create a data frame with average results
+results_df <- data.frame(
+    Model = c("Logistic Regression", "Random Forest", "SVM"),
+    Average_Accuracy = c(avg_logistic_accuracy, avg_rf_accuracy, avg_svm_accuracy),
+    Average_F1 = c(ave_logistic_f1, ave_rf_f1, ave_svm_f1),
+    Average_Sensitivity = c(avg_logistic_sensitivity, avg_rf_sensitivity, avg_svm_sensitivity),
+    Average_Specificity = c(avg_logistic_specificity, avg_rf_specificity, avg_svm_specificity),
+    Average_Precision = c(avg_logistic_precision, avg_rf_precision, avg_svm_precision)
+)
+
+# Print the results as a table
+kable(results_df, format = "markdown", caption = "Model Performance Metrics") %>%
+    kable_styling("striped", full_width = F)
+
+```
