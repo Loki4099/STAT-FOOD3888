@@ -142,3 +142,29 @@ kable(results_df, format = "markdown", caption = "Model Performance Metrics") %>
     kable_styling("striped", full_width = F)
 
 ```
+
+# Logistic Regression with all variables, with Fiber and Choper, Probit
+```{r}
+r1 <- glm(Hypertension ~ SOCIAL + SEX + AGEC + BMISC + SMKSTAT + ALCPER + FIBRPER + CHOPER + Identity + PS_Ratio,
+         data = normalized_data, family = binomial())
+
+r2 <- glm(Hypertension ~ FIBRPER + CHOPER,
+         data = normalized_data, family = binomial())
+
+r3 <- glm(Hypertension ~ FIBRPER + CHOPER, 
+          data = normalized_data, family = binomial(link = "probit"))
+
+# Create a list of all unique variable names from r1, r2, and r3
+all_vars <- unique(c(names(coef_r1), names(coef_r2), names(coef_r3)))
+
+# Create a data frame with all variables and their coefficients for each model
+coef_comparison <- data.frame(
+  Variable = all_vars,
+  Coefficient_r1 = sapply(all_vars, function(v) if (v %in% names(coef_r1)) coef_r1[v] else NA),
+  Coefficient_r2 = sapply(all_vars, function(v) if (v %in% names(coef_r2)) coef_r2[v] else NA),
+  Coefficient_r3 = sapply(all_vars, function(v) if (v %in% names(coef_r3)) coef_r3[v] else NA)
+)
+
+# View the coefficient comparison
+print(coef_comparison)
+```
