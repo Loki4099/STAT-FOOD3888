@@ -487,9 +487,13 @@ numeric_cols <- sapply(normalized_data_old, is.numeric)
 normalized_data_old[numeric_cols] <- scale(normalized_data_old[numeric_cols])
 ```
 
-### Important Variables
-```{r model for finding important variables}
-set.seed(3888)
+```{r }
+
+```
+
+## Group by Varibles
+### Set1
+```{r lr1 lr2 lr3}
 lr1 = glm(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data, family = binomial())
 
 lr2 = glm(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio,data = normalized_data_young, family = binomial())
@@ -497,87 +501,68 @@ lr2 = glm(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + Alcoh
 lr3 = glm(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data_old, family = binomial())
 ```
 
-```{r coef orig plot, fig.height = 4, fig.width= 15}
-models <- list(lr1, lr2, lr3)
-model_names <- c("Logistic Regression Model A", 
+```{r set1}
+models1 <- list(lr1, lr2, lr3)
+model_names1 <- c("Logistic Regression Model A", 
                  "Logistic Regression Model B", 
                  "Logistic Regression Model C")
+```
 
-# Initialize an empty list to store plots
+```{r set1 plot, fig.height = 8, fig.width= 15}
 coef_plots <- list()
+pvalue_plots <- list()
 
-# Loop through each model to generate the coefficient plots
-for (i in seq_along(models)) {
-  model <- models[[i]]
+for (i in seq_along(models1)) {
+  model <- models1[[i]]
   
-  # Create a data frame of coefficients
   coef_df <- as.data.frame(coef(summary(model)))
   names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
   coef_df$Variable <- rownames(coef_df)
   
-  # Create the plot for the current model
   p <- ggplot(coef_df, aes(x = Variable, y = Estimate)) +
     geom_point() +
     geom_errorbar(aes(ymin = Estimate - Std_Error, ymax = Estimate + Std_Error)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
     coord_flip() +
-    labs(title = model_names[i]) +  # Title for each model
+    labs(title = model_names1[i]) +
     theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))  # Center the title
-
-  # Store the plot in the list
+    theme(plot.title = element_text(hjust = 0.5))
+  
   coef_plots[[i]] <- p
 }
 
-# Combine all coefficient plots into one figure
-combined_coef_plot <- wrap_plots(coef_plots, ncol = 3) + 
-  plot_annotation(title = "Logistic Regression Coefficient Plots", 
-                  theme = theme(plot.title = element_text(size = 16, face = "bold")))  # Overall title
-
-# Print the combined coefficient plot
-print(combined_coef_plot)
-```
-
-```{r, fig.height = 4, fig.width= 15}
-models <- list(lr1, lr2, lr3)
-model_names <- c("Logistic Regression Model A", 
-                 "Logistic Regression Model B", 
-                 "Logistic Regression Model C")
-
-# Initialize an empty list to store plots
-pvalue_plots <- list()
-
-# Loop through each model to generate the p-value plots
-for (i in seq_along(models)) {
-  model <- models[[i]]
+for (i in seq_along(models1)) {
+  model <- models1[[i]]
   
-  # Create a data frame of coefficients and p-values
   coef_df <- as.data.frame(coef(summary(model)))
   names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
   coef_df$Variable <- rownames(coef_df)
   
-  # Create the plot for the current model
-  p <- ggplot(coef_df, aes(x = Variable, y = `Pr(>|z|)`)) +  # Use p-values here
+  p <- ggplot(coef_df, aes(x = Variable, y = `Pr(>|z|)`)) +
     geom_point() +
     geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
     coord_flip() +
-    labs(title = model_names[i], y = "P-Value") +  # Title for each model
+    labs(title = model_names1[i], y = "P-Value") +
     theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))  # Center the title
-
-  # Store the plot in the list
+    theme(plot.title = element_text(hjust = 0.5))
+  
   pvalue_plots[[i]] <- p
 }
 
-# Combine all p-value plots into one figure
-combined_pvalue_plot <- wrap_plots(pvalue_plots, ncol = 3) + 
-  plot_annotation(title = "Logistic Regression P-Value Plots", 
-                  theme = theme(plot.title = element_text(size = 16, face = "bold")))  # Overall title
+combined_coef_plot1 <- wrap_plots(coef_plots, ncol = 3) + 
+  plot_annotation(title = "Logistic Regression Coefficient Plots", 
+                  theme = theme(plot.title = element_text(size = 16, face = "bold")))
 
-# Print the combined p-value plot
-print(combined_pvalue_plot)
+combined_pvalue_plot2 <- wrap_plots(pvalue_plots, ncol = 3) + 
+  plot_annotation(title = "Logistic Regression P-Value Plots", 
+                  theme = theme(plot.title = element_text(size = 16, face = "bold")))
+
+combined_plot <- wrap_plots(combined_coef_plot1, combined_pvalue_plot2, nrow = 2)
+
+combined_plot
 ```
 
+### Set2
 ```{r lr4 lr5 lr6}
 lr4 = glm(Hypertension ~ SocialStatus + SmokeStatus + Gender + AlcoholPercentage + Gender + BMI + FiberEnergy + CarbonhydrateEnergy + Age,data = normalized_data, family = binomial())
 
@@ -586,87 +571,68 @@ lr5 = glm(Hypertension ~ SocialStatus + SmokeStatus + Gender + BMI + AlcoholPerc
 lr6 = glm(Hypertension ~ SocialStatus + Gender + BMI + Age + FiberEnergy + CarbonhydrateEnergy, data = normalized_data_old, family = binomial())
 ```
 
-```{r, fig.height = 4, fig.width= 15}
-models <- list(lr4, lr5, lr6)
-model_names <- c("Logistic Regression Model a", 
+```{r set2, fig.height = 4, fig.width= 15}
+models2 <- list(lr4, lr5, lr6)
+model_names2 <- c("Logistic Regression Model a", 
                  "Logistic Regression Model b", 
                  "Logistic Regression Model c")
-
-# Initialize an empty list to store plots
-pvalue_plots <- list()
-
-# Loop through each model to generate the p-value plots
-for (i in seq_along(models)) {
-  model <- models[[i]]
-  
-  # Create a data frame of coefficients and p-values
-  coef_df <- as.data.frame(coef(summary(model)))
-  names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
-  coef_df$Variable <- rownames(coef_df)
-  
-  # Create the plot for the current model
-  p <- ggplot(coef_df, aes(x = Variable, y = `Pr(>|z|)`)) +  # Use p-values here
-    geom_point() +
-    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-    coord_flip() +
-    labs(title = model_names[i], y = "P-Value") +  # Title for each model
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))  # Center the title
-
-  # Store the plot in the list
-  pvalue_plots[[i]] <- p
-}
-
-# Combine all p-value plots into one figure
-combined_pvalue_plot <- wrap_plots(pvalue_plots, ncol = 3) + 
-  plot_annotation(title = "Logistic Regression P-Value Plots", 
-                  theme = theme(plot.title = element_text(size = 16, face = "bold")))  # Overall title
-
-# Print the combined p-value plot
-print(combined_pvalue_plot)
 ```
 
-```{r coef after selection plot, fig.height = 4, fig.width= 15}
-models <- list(lr4, lr5, lr6)
-model_names <- c("Logistic Regression Model a", 
-                 "Logistic Regression Model b", 
-                 "Logistic Regression Model c")
-
-# Initialize an empty list to store plots
+```{r set2 plot, fig.height = 8, fig.width= 15}
 coef_plots <- list()
+pvalue_plots <- list()
 
-# Loop through each model to generate the coefficient plots
-for (i in seq_along(models)) {
-  model <- models[[i]]
+for (i in seq_along(models2)) {
+  model <- models1[[i]]
   
-  # Create a data frame of coefficients
   coef_df <- as.data.frame(coef(summary(model)))
   names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
   coef_df$Variable <- rownames(coef_df)
   
-  # Create the plot for the current model
   p <- ggplot(coef_df, aes(x = Variable, y = Estimate)) +
     geom_point() +
     geom_errorbar(aes(ymin = Estimate - Std_Error, ymax = Estimate + Std_Error)) +
     geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
     coord_flip() +
-    labs(title = model_names[i]) +  # Title for each model
+    labs(title = model_names2[i]) +
     theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))  # Center the title
-
-  # Store the plot in the list
+    theme(plot.title = element_text(hjust = 0.5))
+  
   coef_plots[[i]] <- p
 }
 
-# Combine all coefficient plots into one figure
-combined_coef_plot <- wrap_plots(coef_plots, ncol = 3) + 
-  plot_annotation(title = "Logistic Regression Coefficient Plots", 
-                  theme = theme(plot.title = element_text(size = 16, face = "bold")))  # Overall title
+for (i in seq_along(models1)) {
+  model <- models1[[i]]
+  
+  coef_df <- as.data.frame(coef(summary(model)))
+  names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
+  coef_df$Variable <- rownames(coef_df)
+  
+  p <- ggplot(coef_df, aes(x = Variable, y = `Pr(>|z|)`)) +
+    geom_point() +
+    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+    coord_flip() +
+    labs(title = model_names2[i], y = "P-Value") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+  
+  pvalue_plots[[i]] <- p
+}
 
-# Print the combined coefficient plot
-print(combined_coef_plot)
+combined_coef_plot3 <- wrap_plots(coef_plots, ncol = 3) + 
+  plot_annotation(title = "Logistic Regression Coefficient Plots", 
+                  theme = theme(plot.title = element_text(size = 16, face = "bold")))
+
+combined_pvalue_plot4 <- wrap_plots(pvalue_plots, ncol = 3) + 
+  plot_annotation(title = "Logistic Regression P-Value Plots", 
+                  theme = theme(plot.title = element_text(size = 16, face = "bold")))
+
+combined_plot2 <- wrap_plots(combined_coef_plot3, combined_pvalue_plot4, nrow = 2)
+
+combined_plot2
 ```
 
+### Set3
 ```{r lr7 lr8 lr9}
 lr7 = glm(Hypertension ~ FiberEnergy + CarbonhydrateEnergy,data = normalized_data, family = binomial())
 
@@ -675,99 +641,14 @@ lr8 = glm(Hypertension ~ FiberEnergy + CarbonhydrateEnergy, data = normalized_da
 lr9 = glm(Hypertension ~ FiberEnergy + CarbonhydrateEnergy, data = normalized_data_old, family = binomial())
 ```
 
-```{r, fig.height = 4, fig.width= 15}
-models <- list(lr7, lr8, lr9)
-model_names <- c("Logistic Regression Model a", 
-                 "Logistic Regression Model b", 
-                 "Logistic Regression Model c")
-
-# Initialize an empty list to store plots
-pvalue_plots <- list()
-
-# Loop through each model to generate the p-value plots
-for (i in seq_along(models)) {
-  model <- models[[i]]
-  
-  # Create a data frame of coefficients and p-values
-  coef_df <- as.data.frame(coef(summary(model)))
-  names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
-  coef_df$Variable <- rownames(coef_df)
-  
-  # Create the plot for the current model
-  p <- ggplot(coef_df, aes(x = Variable, y = `Pr(>|z|)`)) +  # Use p-values here
-    geom_point() +
-    geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
-    coord_flip() +
-    labs(title = model_names[i], y = "P-Value") +  # Title for each model
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))  # Center the title
-
-  # Store the plot in the list
-  pvalue_plots[[i]] <- p
-}
-
-# Combine all p-value plots into one figure
-combined_pvalue_plot <- wrap_plots(pvalue_plots, ncol = 3) + 
-  plot_annotation(title = "Logistic Regression P-Value Plots", 
-                  theme = theme(plot.title = element_text(size = 16, face = "bold")))  # Overall title
-
-# Print the combined p-value plot
-print(combined_pvalue_plot)
+```{r set3, fig.height = 4, fig.width= 15}
+models3 <- list(lr7, lr8, lr9)
+model_names3 <- c("Logistic Regression Model i", 
+                 "Logistic Regression Model ii", 
+                 "Logistic Regression Model iii")
 ```
 
-```{r coef after selection plot, fig.height = 4, fig.width= 15}
-models <- list(lr7, lr8, lr9)
-model_names <- c("Logistic Regression Model a", 
-                 "Logistic Regression Model b", 
-                 "Logistic Regression Model c")
-
-# Initialize an empty list to store plots
-coef_plots <- list()
-
-# Loop through each model to generate the coefficient plots
-for (i in seq_along(models)) {
-  model <- models[[i]]
-  
-  # Create a data frame of coefficients
-  coef_df <- as.data.frame(coef(summary(model)))
-  names(coef_df)[which(names(coef_df) == "Std. Error")] <- "Std_Error"
-  coef_df$Variable <- rownames(coef_df)
-  
-  # Create the plot for the current model
-  p <- ggplot(coef_df, aes(x = Variable, y = Estimate)) +
-    geom_point() +
-    geom_errorbar(aes(ymin = Estimate - Std_Error, ymax = Estimate + Std_Error)) +
-    geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
-    coord_flip() +
-    labs(title = model_names[i]) +  # Title for each model
-    theme_minimal() +
-    theme(plot.title = element_text(hjust = 0.5))  # Center the title
-
-  # Store the plot in the list
-  coef_plots[[i]] <- p
-}
-
-# Combine all coefficient plots into one figure
-combined_coef_plot <- wrap_plots(coef_plots, ncol = 3) + 
-  plot_annotation(title = "Logistic Regression Coefficient Plots", 
-                  theme = theme(plot.title = element_text(size = 16, face = "bold")))  # Overall title
-
-# Print the combined coefficient plot
-print(combined_coef_plot)
-```
-
-```{r}
-library(ggplot2)
-library(dplyr)
-library(patchwork)
-
-# Define the models and their names
-models <- list(lr7, lr8, lr9)
-model_names <- c("Logistic Regression Model a", 
-                 "Logistic Regression Model b", 
-                 "Logistic Regression Model c")
-
-# Initialize lists to store plots
+```{r set3 plot, fig.height = 8, fig.width= 15}
 pvalue_plots <- list()
 coef_plots <- list()
 
@@ -817,6 +698,7 @@ print(combined_plot)
 
 ```
 
+### Lasso
 ```{r lasso}
 x <- model.matrix(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
                   data = normalized_data)[, -1]
@@ -833,3 +715,9 @@ print(lasso_coefficients)
 ```
 
 ## Group By Gender
+```{r}
+normalized_data_mele <- normalized_data %>%
+  filter(Gender == 1)
+normalized_data_female <- normalized_data %>%
+  filter(Gender == 2)
+```
