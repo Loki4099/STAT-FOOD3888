@@ -31,6 +31,8 @@ library(stargazer)
 library(broom)
 library(knitr)
 library(kableExtra)
+library(grid)
+library(gridExtra)
 ```
 # Data Import
 ```{r data import}
@@ -457,10 +459,10 @@ colors <- c('#90F1EF', '#ffd6e0', '#ffef9f')
 fig <- plot_ly(results_long, x = ~Metric, y = ~round(Value, 3), type = 'bar', color = ~Model, colors = colors,
                text = ~round(Value, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
-    title = "Model Performance Metrics Comparison",
+    title = "Figure 5: Model Performance Metrics Comparison",
     yaxis = list(title = 'Score', range = c(0.5, 0.75)), 
-    barmode = 'group', # Group bars by model
-    paper_bgcolor = 'rgba(245, 246, 249, 1)', # Background color
+    barmode = 'group',
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
     showlegend = TRUE, # Show legend for models
     margin = list(l = 50, r = 50, b = 100, t = 100, pad = 4), 
     plot_bgcolor = 'rgba(0, 0, 0, 0)' 
@@ -468,33 +470,8 @@ fig <- plot_ly(results_long, x = ~Metric, y = ~round(Value, 3), type = 'bar', co
 
 fig
 ```
-```{r}
-# Extract variable importance
-importance_values <- as.data.frame(importance(rf))
-
-# Create a column for variable names
-importance_values$Variable <- rownames(importance_values)
-
-# Sort the importance values based on MeanDecreaseGini or MeanDecreaseAccuracy
-importance_values <- importance_values %>%
-  arrange(desc(MeanDecreaseGini))  # You can use 'MeanDecreaseAccuracy' if you prefer
-
-# Create a custom ggplot for variable importance
-ggplot(importance_values, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
-  geom_bar(stat = "identity", fill = "#f4978e") +
-  coord_flip() +  # Flip the axes to make it horizontal
-  labs(title = "Variable Importance (Random Forest)", x = "Variables", y = "Mean Decrease in Gini") +
-  theme_minimal()
-```
-
 # PDP
-## Whole Dataset
-### All Variables
 ```{r, fig.width = 15, fig.height = 10}
-set.seed(3888)
-rf1 <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data, ntree = 500, importance = TRUE,
-proximity=TRUE)
-
 variables <- c("CarbonhydrateEnergy", "FiberEnergy")
 
 pal <- c("blue", "red")
@@ -508,21 +485,16 @@ for (var in variables) {
   
   pdp_class1 <- pdp::partial(rf1, pred.var = var, prob = TRUE, 
                              plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-  
   plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
        main = paste("PDP for", var, "Predicting Hypertension"), 
        ylab = "Partial Dependence", xlab = var)
-  
   lines(pdp_class0, col = pal[1], lwd = 2)
   lines(pdp_class1, col = pal[2], lwd = 2)
-  
   legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
 }
-
 par(mfrow = c(1, 1))
 ```
 
-### Important Variables
 ```{r}
 set.seed(3888)
 rf2 <- randomForest(Hypertension ~ BMI + Age+ PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, data = normalized_data, ntree = 500, importance = TRUE,
@@ -552,73 +524,71 @@ for (var in variables) {
 
 par(mfrow = c(1, 1))
 ```
+```{r group by age}
+normalized_data_young <- selected_data %>%
+  filter(Age < 50)
+normalized_data_old <- selected_data %>%
+  filter(Age >= 50)
 
-## Non-Ind
-```{r}
-normalized_data_nonind <- normalized_data %>%
-  filter(Identity == 0)
+numeric_cols <- sapply(normalized_data_young, is.numeric)  
+normalized_data_young[numeric_cols] <- scale(normalized_data_young[numeric_cols])
+
+numeric_cols <- sapply(normalized_data_old, is.numeric)  
+normalized_data_old[numeric_cols] <- scale(normalized_data_old[numeric_cols])
 ```
 
-### RF All Variable
-```{r}
-rf3 <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data_nonind, ntree = 500, importance = TRUE,
-proximity=TRUE)
+```{r model for finding important variables}
+rf1 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                     data = normalized_data, ntree = 500, importance = TRUE, proximity = TRUE)
 
-rf4 <- randomForest(Hypertension ~ BMI + Age+ PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, data = normalized_data_nonind, ntree = 500, importance = TRUE,
-proximity=TRUE)
+rf2 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio,data = normalized_data_young, ntree = 500, importance = TRUE, proximity = TRUE)
 
-pal <- c("blue", "red")
-
-par(mfrow = c(1, 2))
-
-for (var in variables) {
-  
-  pdp_class0 <- pdp::partial(rf3, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
-  
-  pdp_class1 <- pdp::partial(rf3, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-  
-  plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
-       main = paste("PDP for", var, "Predicting Hypertension"), 
-       ylab = "Partial Dependence", xlab = var)
-  
-  lines(pdp_class0, col = pal[1], lwd = 2)
-  lines(pdp_class1, col = pal[2], lwd = 2)
-  
-  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
-}
-
-par(mfrow = c(1, 1))
-```
-### RF Important Variables
-```{r}
-
-```
-## Ind
-```{r}
-normalized_data_ind <- normalized_data %>%
-  filter(Identity == 1)
+rf3 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                     data = normalized_data_old, ntree = 500, importance = TRUE, proximity = TRUE)
 ```
 
-### RF All Variable
+```{r important variables, fig.height = 5, fig.width= 20}
+importance_rf1 <- as.data.frame(importance(rf1))
+importance_rf1$Variable <- rownames(importance_rf1)
+importance_rf1 <- importance_rf1 %>% arrange(desc(MeanDecreaseGini))
 
-### RF Important Variables
+p1 <- ggplot(importance_rf1, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_bar(stat = "identity", fill = "#f4978e") +
+  coord_flip() +
+  labs(title = "Variable Importance (Random Forest All)", x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
 
-```{r}
-models <- list(
-  rf1 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
-                     data = normalized_data, ntree = 500, importance = TRUE, proximity = TRUE),
-  
-  rf2 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, 
-                     data = normalized_data, ntree = 500, importance = TRUE, proximity = TRUE),
-  
-  rf3 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
-                     data = normalized_data_nonind, ntree = 500, importance = TRUE, proximity = TRUE),
-  
-  rf4 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, 
-                     data = normalized_data_nonind, ntree = 500, importance = TRUE, proximity = TRUE)
-)
+importance_rf2 <- as.data.frame(importance(rf2))
+importance_rf2$Variable <- rownames(importance_rf2)
+importance_rf2 <- importance_rf2 %>% arrange(desc(MeanDecreaseGini))
+
+p2 <- ggplot(importance_rf2, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_bar(stat = "identity", fill = "#f4978e") +
+  coord_flip() +
+  labs(title = "Variable Importance (Random Forest Young)", x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+
+importance_rf3 <- as.data.frame(importance(rf3))
+importance_rf3$Variable <- rownames(importance_rf3)
+importance_rf3 <- importance_rf3 %>% arrange(desc(MeanDecreaseGini))
+
+p3 <- ggplot(importance_rf3, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_bar(stat = "identity", fill = "#f4978e") +
+  coord_flip() +
+  labs(title = "Variable Importance (Random Forest Old)", x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+
+grid.arrange(
+  p1, p2, p3, ncol = 3, 
+  top = textGrob("Figure 6: Variable Importance for Three Random Forest Models", gp = gpar(fontsize = 16, fontface = "bold")))
+```
+
+```{r model for important variables}
+rf4 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = normalized_data, ntree = 500, importance = TRUE, proximity = TRUE)
+
+rf5 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = normalized_data_young, ntree = 500, importance = TRUE, proximity = TRUE)
+
+rf6 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = normalized_data_old, ntree = 500, importance = TRUE, proximity = TRUE)
 ```
 
 ```{r}
@@ -626,36 +596,73 @@ variables <- c("CarbonhydrateEnergy", "FiberEnergy")
 
 pal <- c("blue", "red")
 
-par(mfrow = c(2, 6))
+par(mfrow = c(1, 2))
 
-plots_list <- list()
-
-for (model_name in names(models)) {
-    model <- models[[model_name]]
-    plots_list[[model_name]] <- list()
-    
-    for (var in variables) {
-        pdp_class0 <- pdp::partial(model, pred.var = var, prob = TRUE, 
-                                   plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
-        pdp_class1 <- pdp::partial(model, pred.var = var, prob = TRUE, 
-                                   plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-        
-        plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1),
-             main = paste("PDP for", var, "Predicting Hypertension in", model_name),
-             ylab = "Partial Dependence", xlab = var)
-        
-        lines(pdp_class0, col = pal[1], lwd = 2)
-        lines(pdp_class1, col = pal[2], lwd = 2)
-        
-        legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
-
-        plots_list[[model_name]][[var]] <- recordPlot()
-    }
+for (var in variables) {
+  
+  pdp_class0 <- pdp::partial(rf1, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+  
+  pdp_class1 <- pdp::partial(rf1, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
+  plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
+       main = paste("PDP for", var, "Predicting Hypertension"), 
+       ylab = "Partial Dependence", xlab = var)
+  lines(pdp_class0, col = pal[1], lwd = 2)
+  lines(pdp_class1, col = pal[2], lwd = 2)
+  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
 }
-
 par(mfrow = c(1, 1))
 ```
 
 ```{r}
-plots_list[["rf1"]][["CarbonhydrateEnergy"]]
+library(pdp)
+library(ggplot2)
+library(patchwork)
+
+# Define the models and the variables of interest
+models <- list(rf1, rf2, rf3, rf4, rf5, rf6)
+model_names <- c("rf1", "rf2", "rf3", "rf4", "rf5", "rf6")
+variables <- c("CarbonhydrateEnergy", "FiberEnergy")
+
+# Create a color palette for the classes
+pal <- c("#f4978e", "#3b9ad0")  # Adjust the colors as needed
+
+# Loop through each variable to generate and print the PDPs
+for (variable in variables) {
+  # Initialize an empty list to store plots
+  plots <- list()
+  
+  # Loop through each model to generate the PDPs for the current variable
+  for (i in seq_along(models)) {
+    model <- models[[i]]
+    model_name <- model_names[i]
+    
+    # Create partial dependence for both classes
+    pdp_class0 <- pdp::partial(model, pred.var = variable, prob = TRUE, 
+                                plot = FALSE, type = "classification", 
+                                which.class = 1, rug = TRUE)
+    pdp_class1 <- pdp::partial(model, pred.var = variable, prob = TRUE, 
+                                plot = FALSE, type = "classification", 
+                                which.class = 2, rug = TRUE)
+    
+    # Create the plot
+    p <- ggplot() +
+      geom_line(data = pdp_class0, aes_string(x = variable, y = "yhat"), color = pal[1], size = 1) +
+      geom_line(data = pdp_class1, aes_string(x = variable, y = "yhat"), color = pal[2], size = 1) +
+      labs(title = paste("PDP for", variable, "Predicting Hypertension\n(Model:", model_name, ")"),
+           y = "Partial Dependence", x = variable) +
+      theme_minimal() +
+      scale_y_continuous(limits = c(0, 1))  # Set y limits between 0 and 1
+    
+    # Store the plot in the list
+    plots[[i]] <- p
+  }
+  
+  # Combine all plots into one figure for the current variable
+  combined_plot <- wrap_plots(plots, ncol = 2)  # Arrange plots in 2 columns
+  
+  # Print the combined plot for the current variable
+  print(combined_plot)
+}
 ```
