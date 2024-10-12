@@ -701,13 +701,13 @@ combined_plot3
 ```
 
 ### Full Plot
-```{r coef plot by age, fig.width= 100, fig.width= 16}
+```{r coef plot by age, fig.width= 18, fig.height= 12}
 wrap_plots(combined_coef_plot1,
            combined_coef_plot3, 
            combined_coef_plot5, nrow = 3)
 ```
 
-```{r p-val plot by age, fig.width= 100, fig.width= 16}
+```{r p-val plot by age, fig.width= 18, fig.height= 12}
 wrap_plots(combined_pvalue_plot2,
            combined_pvalue_plot4, 
            combined_pvalue_plot6, nrow = 3)
@@ -938,13 +938,13 @@ combined_plot6
 ```
 
 ### Full Plot
-```{r p-coef plot by age, fig.width= 100, fig.width= 16}
+```{r p-coef plot by gender, fig.width= 18, fig.height= 12}
 wrap_plots(combined_coef_plot7,
            combined_coef_plot9, 
            combined_coef_plot11, nrow = 3)
 ```
 
-```{r p-val plot by gender, fig.width= 100, fig.width= 16}
+```{r p-val plot by gender, fig.width= 18, fig.height= 12}
 wrap_plots(combined_pvalue_plot8,
            combined_pvalue_plot10, 
            combined_pvalue_plot12, nrow = 3)
