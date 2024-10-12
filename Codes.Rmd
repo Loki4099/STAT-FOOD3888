@@ -133,6 +133,7 @@ select(
     CarbonhydrateEnergy_Day1, CarbonhydrateEnergy_Day2
   )
 ```
+
 # Type Check 1
 ```{r variable check before}
 data.frame(Variable = names(selected_data), Type = sapply(selected_data, class)) %>%
@@ -142,6 +143,7 @@ data.frame(Variable = names(selected_data), Type = sapply(selected_data, class))
   ) %>%
  tab_caption(caption = md("Table 1: Variable types table"))
 ```
+
 # Na values + New Variables + Type Conversion
 ```{r navalue_new_typeconversion}
 selected_data <- selected_data %>%
@@ -168,6 +170,7 @@ data.frame(Variable = names(selected_data), Type = sapply(selected_data, class))
   ) %>%
  tab_caption(caption = md("Table 2: Variable types table after correction"))
 ```
+
 # Duplicate Values
 ```{r duplicate values}
 selected_data %>% 
@@ -178,40 +181,6 @@ selected_data %>%
   gt() %>%
   tab_header(title = "Dimensions of Unique Tibble") %>%
   tab_caption(caption = md("Table 3: Dimensions of Unique Data Table"))
-```
-
-# Categrocial Distribution
-```{r categrocial distribution bar plot}
-plot_categorical_distribution <- function(data) {
-  categorical_vars <- data %>%
-    select(where(is.factor) | where(is.character)) %>%
-    select(-PersonID, -HouseID)
-  
-  for (var in names(categorical_vars)) {
-    non_na_data <- data %>%
-      filter(!is.na(.data[[var]]))
-    
-    if (nrow(non_na_data) == 0) next
-    
-    p <- ggplot(non_na_data, aes(x = .data[[var]])) +
-      geom_bar(aes(y = (..count..) / sum(..count..), fill = .data[[var]]), color = "black") +
-      scale_fill_brewer(palette = "Set3") + 
-      labs(title = paste("Proportion of Categories in", var), 
-           x = "Category", 
-           y = "Proportion") +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))  
-    
-    print(p)
-  }
-}
-
-plot_categorical_distribution(selected_data) 
-```
-# Merge Variable
-```{r merge variable}
-selected_data <- selected_data %>% 
-  mutate(SmokeStatus = recode(SmokeStatus, "2" = "1", "3" = "1","4" = "2","5" = "3"))
 ```
 
 # Outliers and New Variables
@@ -232,15 +201,37 @@ selected_data <- selected_data %>%
     (is.na(AlcoholPercentage) | (AlcoholPercentage >= normal_ranges$AlcoholPercentage[1] & AlcoholPercentage <= normal_ranges$AlcoholPercentage[2])),
     (is.na(CarbonhydrateEnergy) | (CarbonhydrateEnergy >= normal_ranges$CarbonhydrateEnergy[1] & CarbonhydrateEnergy <= normal_ranges$CarbonhydrateEnergy[2])),
     (is.na(FiberEnergy) | (FiberEnergy >= normal_ranges$FiberEnergy[1] & FiberEnergy <= normal_ranges$FiberEnergy[2])),
-    (is.na(PotassiumSodiumRatio) | (PotassiumSodiumRatio >= normal_ranges$PotassiumSodiumRatio[1] & PotassiumSodiumRatio <= normal_ranges$PotassiumSodiumRatio[2]))
-  ) %>%
-  mutate(
-    Hypertension = as.factor(case_when(
-      Systolic >= 120 | Diastolic >= 80 ~ 1,
-      TRUE ~ 0
-    ))
-  )
- # select(-Sodium, -Potassium)
+    (is.na(PotassiumSodiumRatio) | (PotassiumSodiumRatio >= normal_ranges$PotassiumSodiumRatio[1] & PotassiumSodiumRatio <= normal_ranges$PotassiumSodiumRatio[2])))
+```
+
+# Categrocial Distribution
+```{r categrocial distribution bar plot, fig.height= 5, fig.width= 5}
+custom_colors <- c("#540d6e", "#ee4266","#ffd23f","#3bceac","#0ead69")
+
+categorical_vars <- selected_data %>%
+  select(where(is.factor)) %>%
+  names()
+
+long_data <- selected_data %>%
+  pivot_longer(cols = all_of(categorical_vars), names_to = "Variable", values_to = "Value")
+
+plot <- ggplot(long_data, aes(x = Value, fill = Variable)) +
+  geom_bar(aes(y = ..prop.., group = Variable), position = "dodge", show.legend = FALSE) +
+  facet_wrap(~ Variable, scales = "free", nrow = 2) +
+  scale_fill_manual(values = custom_colors) +
+  labs(title = "Overall Distribution of Categorical Variables",
+       y = "Proportion",
+       caption = "Figure 1: Proportions of Categorical Variables") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(plot)
+```
+
+# Merge Variable
+```{r merge variable}
+selected_data <- selected_data %>% 
+  mutate(SmokeStatus = recode_factor(SmokeStatus, "2" = "1", "3" = "1","4" = "2","5" = "3"))
 ```
 
 # Missing Values
@@ -261,11 +252,14 @@ corr_matrix <- selected_data%>%
   mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
   cor(use = "complete.obs")
 
-ggcorrplot(corr_matrix, lab = TRUE, 
-           title = "Correlation Heatmap for ALL", 
+ggcorrplot(corr_matrix, lab = TRUE,
+           title = "Correlation Heatmap for ALL",
            colors = c("blue", "white", "red"),
-           tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
+           tl.cex = 9, lab_size = 4) +
+  theme(legend.position = "none") +
+  labs(caption = "Figure 2: Correlation Heatmap for ALL Variables")
 ```
+
 
 # Regression Imputation
 ```{r regression imputation, fig.height = 5, fig.width= 11}
@@ -279,18 +273,31 @@ selected_data$Diastolic[is.na(selected_data$Diastolic)] <- lm(Diastolic ~ Gender
   predict(newdata = selected_data[is.na(selected_data$Diastolic), ])
 
 vis_miss(selected_data %>% 
-           select(-PersonID, -HouseID))
+           select(-PersonID, -HouseID)) +
+  ggtitle("Missing Data Heatmap for Selected Variables") +
+  labs(caption = "Figure 3: Visualization of Missing Data for Selected Variables")
 ```
+# Hypertension variable
+```{r}
+selected_data <- selected_data %>%  
+  mutate(Hypertension = as.factor(case_when(Systolic >= 120 | Diastolic >= 80 ~ 1,
+                                            TRUE ~ 0)))
+```
+
 # Normalization
 ```{r normalization}
-normalized_data <- selected_data %>% 
-  mutate(across(where(is.numeric), scale))
+numeric_cols <- sapply(selected_data, is.numeric)  
+normalized_data <- selected_data
+normalized_data[numeric_cols] <- scale(selected_data[numeric_cols])
 ```
+
 # Multicollinearity
 ```{r multicollinearity, fig.height=10, fig.width=10}
-selected_data %>% 
-  select(where(is.numeric), -Systolic, -Diastolic) %>% 
-  ggscatmat()
+selected_data %>%
+  select(where(is.numeric), -Systolic, -Diastolic) %>%
+  ggscatmat() +
+  ggtitle("Scatter Matrix of Numeric Variables") +
+  labs(caption = "Figure 4: Scatter Matrix of Numeric Variables")
 ```
 
 # Logistic Regression
@@ -303,7 +310,7 @@ summary(lr)
 
 # Random Forest
 ```{r random forest}
-set.seed(123)
+set.seed(3888)
 
 rf <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data, ntree = 500)
 ```
@@ -314,7 +321,7 @@ final_data <- cbind(as.data.frame(predict(dummyVars(~ . - Hypertension - PersonI
                                           newdata = normalized_data)), 
                     Hypertension = normalized_data$Hypertension)
 
-set.seed(123)
+set.seed(3888)
 
 svm <- svm(Hypertension ~ ., 
            data = final_data,  
@@ -322,8 +329,8 @@ svm <- svm(Hypertension ~ .,
 ```
 
 # Model comparison (5-fold cross validation)
-```{r}
-set.seed(1234)
+```{r 3-repeat 5-fold}
+set.seed(3888)
 k_folds <- 5
 n_repeats <- 3
 
@@ -423,16 +430,213 @@ ave_svm_specificity <- mean(svm_specificity)
 ave_svm_precision <- mean(svm_precision)
 ```
 
-```{r}
+```{r table}
 results_df <- data.frame(
     Model = c("Logistic Regression", "Random Forest", "SVM"),
-    Average_Accuracy = c(ave_logistic_accuracy, ave_rf_accuracy, ave_svm_accuarcy),
+    Average_Accuracy = c(ave_logistic_accuracy, ave_rf_accuracy, ave_svm_accuracy),
     Average_F1 = c(ave_logistic_f1, ave_rf_f1, ave_svm_f1),
     Average_Sensitivity = c(ave_logistic_sensitivity, ave_rf_sensitivity, ave_svm_sensitivity),
     Average_Specificity = c(ave_logistic_specificity, ave_rf_specificity, ave_svm_specificity),
     Average_Precision = c(ave_logistic_precision, ave_rf_precision, ave_svm_precision)
 )
 
-kable(results_df, format = "markdown", caption = "Model Performance Metrics") %>%
+kable(results_df, format = "markdown", caption = "Table 5:Model Performance Metrics") %>%
     kable_styling("striped", full_width = F)
+```
+
+
+```{r}
+results_long <- results_df %>%
+  pivot_longer(cols = starts_with("Average_"), 
+               names_to = "Metric", 
+               values_to = "Value") %>%
+  mutate(Metric = sub("Average_", "", Metric)) 
+
+colors <- c('#90F1EF', '#ffd6e0', '#ffef9f')
+
+fig <- plot_ly(results_long, x = ~Metric, y = ~round(Value, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(Value, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    title = "Model Performance Metrics Comparison",
+    yaxis = list(title = 'Score', range = c(0.5, 0.75)), 
+    barmode = 'group', # Group bars by model
+    paper_bgcolor = 'rgba(245, 246, 249, 1)', # Background color
+    showlegend = TRUE, # Show legend for models
+    margin = list(l = 50, r = 50, b = 100, t = 100, pad = 4), 
+    plot_bgcolor = 'rgba(0, 0, 0, 0)' 
+  )
+
+fig
+```
+# PDP
+## Whole Dataset
+### All Variables
+```{r, fig.width = 15, fig.height = 10}
+set.seed(3888)
+rf1 <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data, ntree = 500, importance = TRUE,
+proximity=TRUE)
+
+variables <- c("CarbonhydrateEnergy", "FiberEnergy")
+
+pal <- c("blue", "red")
+
+par(mfrow = c(1, 2))
+
+for (var in variables) {
+  
+  pdp_class0 <- pdp::partial(rf1, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+  
+  pdp_class1 <- pdp::partial(rf1, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
+  
+  plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
+       main = paste("PDP for", var, "Predicting Hypertension"), 
+       ylab = "Partial Dependence", xlab = var)
+  
+  lines(pdp_class0, col = pal[1], lwd = 2)
+  lines(pdp_class1, col = pal[2], lwd = 2)
+  
+  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
+}
+
+par(mfrow = c(1, 1))
+```
+
+### Important Variables
+```{r}
+set.seed(3888)
+rf2 <- randomForest(Hypertension ~ BMI + Age+ PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, data = normalized_data, ntree = 500, importance = TRUE,
+proximity=TRUE)
+
+pal <- c("blue", "red")
+
+par(mfrow = c(1, 2))
+
+for (var in variables) {
+  
+  pdp_class0 <- pdp::partial(rf2, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+  
+  pdp_class1 <- pdp::partial(rf2, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
+  
+  plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
+       main = paste("PDP for", var, "Predicting Hypertension"), 
+       ylab = "Partial Dependence", xlab = var)
+  
+  lines(pdp_class0, col = pal[1], lwd = 2)
+  lines(pdp_class1, col = pal[2], lwd = 2)
+  
+  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
+}
+
+par(mfrow = c(1, 1))
+```
+
+## Non-Ind
+```{r}
+normalized_data_nonind <- normalized_data %>%
+  filter(Identity == 0)
+```
+
+### RF All Variable
+```{r}
+rf3 <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data_nonind, ntree = 500, importance = TRUE,
+proximity=TRUE)
+
+rf4 <- randomForest(Hypertension ~ BMI + Age+ PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, data = normalized_data_nonind, ntree = 500, importance = TRUE,
+proximity=TRUE)
+
+pal <- c("blue", "red")
+
+par(mfrow = c(1, 2))
+
+for (var in variables) {
+  
+  pdp_class0 <- pdp::partial(rf3, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+  
+  pdp_class1 <- pdp::partial(rf3, pred.var = var, prob = TRUE, 
+                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
+  
+  plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1), 
+       main = paste("PDP for", var, "Predicting Hypertension"), 
+       ylab = "Partial Dependence", xlab = var)
+  
+  lines(pdp_class0, col = pal[1], lwd = 2)
+  lines(pdp_class1, col = pal[2], lwd = 2)
+  
+  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
+}
+
+par(mfrow = c(1, 1))
+```
+### RF Important Variables
+```{r}
+
+```
+## Ind
+```{r}
+normalized_data_ind <- normalized_data %>%
+  filter(Identity == 1)
+```
+
+### RF All Variable
+
+### RF Important Variables
+
+```{r}
+models <- list(
+  rf1 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                     data = normalized_data, ntree = 500, importance = TRUE, proximity = TRUE),
+  
+  rf2 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, 
+                     data = normalized_data, ntree = 500, importance = TRUE, proximity = TRUE),
+  
+  rf3 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                     data = normalized_data_nonind, ntree = 500, importance = TRUE, proximity = TRUE),
+  
+  rf4 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy, 
+                     data = normalized_data_nonind, ntree = 500, importance = TRUE, proximity = TRUE)
+)
+```
+
+```{r}
+variables <- c("CarbonhydrateEnergy", "FiberEnergy")
+
+pal <- c("blue", "red")
+
+par(mfrow = c(2, 6))
+
+plots_list <- list()
+
+for (model_name in names(models)) {
+    model <- models[[model_name]]
+    plots_list[[model_name]] <- list()
+    
+    for (var in variables) {
+        pdp_class0 <- pdp::partial(model, pred.var = var, prob = TRUE, 
+                                   plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
+        pdp_class1 <- pdp::partial(model, pred.var = var, prob = TRUE, 
+                                   plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
+        
+        plot(NA, xlim = range(normalized_data[[var]]), ylim = c(0, 1),
+             main = paste("PDP for", var, "Predicting Hypertension in", model_name),
+             ylab = "Partial Dependence", xlab = var)
+        
+        lines(pdp_class0, col = pal[1], lwd = 2)
+        lines(pdp_class1, col = pal[2], lwd = 2)
+        
+        legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
+
+        plots_list[[model_name]][[var]] <- recordPlot()
+    }
+}
+
+par(mfrow = c(1, 1))
+```
+
+```{r}
+plots_list[["rf1"]][["CarbonhydrateEnergy"]]
 ```
