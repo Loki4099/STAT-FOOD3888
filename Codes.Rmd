@@ -1,0 +1,438 @@
+---
+title: "Codes"
+author: "mia"
+date: "2024-10-10"
+output: html_document
+---
+# Library
+```{r library, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(gt)
+library(naniar)
+library(ggcorrplot)
+library(corrplot)
+library(GGally)
+library(randomForest)
+library(pdp)
+library(e1071)  
+library(dplyr) 
+library(caret)
+library(plotly)
+library(stargazer)
+library(broom)
+library(knitr)
+library(kableExtra)
+```
+# Data Import
+```{r data import}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+raw_bsp <- read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+raw_bcn <- read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
+raw_bhh <- read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
+```
+# Rename and Created
+```{r rename+Identity}
+bp_bb <- inner_join(raw_bp, raw_bb, by = "ABSPID") %>%
+  rename(HypertensionStatus = HYPBC,
+         BodyMass = SABDYMS,
+         SocialStatus = SF2SA1QN,
+         PersonID = ABSPID,
+         Age = AGEC,
+         Gender = SEX,
+         BMI = BMISC,
+         Systolic = SYSTOL,
+         Diastolic = DIASTOL,
+         SmokeStatus = SMKSTAT,
+         AlcoholPercentage_Day1 = ALCPER1,
+         AlcoholPercentage_Day2 = ALCPER2,
+         Potassium_Day1 = POTAST1,
+         Potassium_Day2 = POTAST2,
+         Sodium_Day1 = SODIUMT1,
+         Sodium_Day2 = SODIUMT2,
+         FiberEnergy_Day1 = FIBRPER1,
+         FiberEnergy_Day2 = FIBRPER2,
+         CarbonhydrateEnergy_Day1 = CHOPER1,
+         CarbonhydrateEnergy_Day2 = CHOPER2,
+         EnergyBMR_Day1 = EIBMR1,
+         EnergyBMR_Day2 = EIBMR2) %>%
+   mutate(Identity = factor(0))
+
+bsp_bhh<- left_join(raw_bsp, raw_bhh,by = c("ABSHID")) %>%
+  rename(BodyMass = SABDYMS,
+         SocialStatus = SF2SA1DB,
+         HouseID = ABSHID,
+         Age = AGEEC,
+         Gender = SEX,
+         BMI = BMISC,
+         Systolic = SYSTOL,
+         Diastolic = DIASTOL,
+         SmokeStatus = SMKSTAT,
+         AlcoholPercentage_Day1 = ALCPER1,
+         AlcoholPercentage_Day2 = ALCPER2,
+         Potassium_Day1 = POTAST1,
+         Potassium_Day2 = POTAST2,
+         Sodium_Day1 = SODIUMT1,
+         Sodium_Day2 = SODIUMT2,
+         FiberEnergy_Day1 = FIBRPER1,
+         FiberEnergy_Day2 = FIBRPER2,
+         CarbonhydrateEnergy_Day1 = CHOPER1,
+         CarbonhydrateEnergy_Day2 = CHOPER2,
+         EnergyBMR_Day1 = EIBMR1,
+         EnergyBMR_Day2 = EIBMR2)%>%
+   mutate(Identity = factor(1))
+
+bcn <- raw_bcn %>%
+  rename(HouseID = ABSHID,
+         MedicalCondition = ICD10ME)
+```
+# First Filter
+```{r filter 1}
+bp_bb <- bp_bb %>%
+  mutate(EnergyBMR_Day1 = na_if(EnergyBMR_Day1, 997) %>% na_if(998),
+         EnergyBMR_Day2 = na_if(EnergyBMR_Day2, 997) %>% na_if(998),
+         EnergyBMR = (EnergyBMR_Day1 + EnergyBMR_Day2)/2) %>%
+  filter(
+    Age >= 18, 
+    HypertensionStatus == 5,
+    BodyMass != 4,
+    (is.na(EnergyBMR) | EnergyBMR >= 0.9))
+
+bsp_bhh <- bsp_bhh %>% 
+  mutate(EnergyBMR_Day1 = na_if(EnergyBMR_Day1, 997) %>% na_if(998),
+         EnergyBMR_Day2 = na_if(EnergyBMR_Day2, 997) %>% na_if(998),
+         EnergyBMR = (EnergyBMR_Day1 + EnergyBMR_Day2)/2) %>%
+  filter(
+    Age >= 18, 
+    BodyMass != 4,
+    !HouseID %in% bcn$HouseID[bcn$MedicalCondition %in% c(7, 20)],
+    (is.na(EnergyBMR) | EnergyBMR >= 0.9))
+```
+# Merge
+```{r merge}
+raw_data <- bind_rows(bp_bb,bsp_bhh)
+```
+# Variable Selection
+```{r variable selection}
+selected_data <- raw_data %>%
+select(
+    PersonID, HouseID, SocialStatus, Age, Gender, BMI, Systolic, Diastolic, SmokeStatus, Identity,
+    AlcoholPercentage_Day1, AlcoholPercentage_Day2,
+    Potassium_Day1, Potassium_Day2, 
+    Sodium_Day1, Sodium_Day2,
+    FiberEnergy_Day1, FiberEnergy_Day2, 
+    CarbonhydrateEnergy_Day1, CarbonhydrateEnergy_Day2
+  )
+```
+# Type Check 1
+```{r variable check before}
+data.frame(Variable = names(selected_data), Type = sapply(selected_data, class)) %>%
+  gt() %>%
+  tab_header(
+    title = "Variable Names and Their Types"
+  ) %>%
+ tab_caption(caption = md("Table 1: Variable types table"))
+```
+# Na values + New Variables + Type Conversion
+```{r navalue_new_typeconversion}
+selected_data <- selected_data %>%
+  mutate(
+    across(c(Gender, SocialStatus, SmokeStatus), as.factor),
+    BMI = na_if(BMI, 98) %>% na_if(99),
+    Systolic = na_if(Systolic, 0) %>% na_if(998) %>% na_if(999),
+    Diastolic = na_if(Diastolic, 0) %>% na_if(998) %>% na_if(999),
+    Potassium = (Potassium_Day1 + Potassium_Day2) / 2, 
+    Sodium = (Sodium_Day1 + Sodium_Day2) / 2,
+    FiberEnergy = (FiberEnergy_Day1 + FiberEnergy_Day2)/2,
+    CarbonhydrateEnergy = (CarbonhydrateEnergy_Day1 + CarbonhydrateEnergy_Day2) / 2,
+    AlcoholPercentage = (AlcoholPercentage_Day1 + AlcoholPercentage_Day2) /2,
+    PotassiumSodiumRatio = Sodium / Potassium
+    ) %>% 
+  select(PersonID,HouseID, SocialStatus, Age, Gender, BMI, Systolic, Diastolic, SmokeStatus, AlcoholPercentage, PotassiumSodiumRatio, FiberEnergy, CarbonhydrateEnergy, Identity)
+```
+# Type Check 2
+```{r variable check after}
+data.frame(Variable = names(selected_data), Type = sapply(selected_data, class)) %>%
+  gt() %>%
+  tab_header(
+    title = "Variable Names and Their Types"
+  ) %>%
+ tab_caption(caption = md("Table 2: Variable types table after correction"))
+```
+# Duplicate Values
+```{r duplicate values}
+selected_data %>% 
+  select(-PersonID) %>% 
+  distinct() %>% 
+  dim() %>% 
+  tibble::tibble(Dimension = c("Rows", "Columns"), Count = .) %>% 
+  gt() %>%
+  tab_header(title = "Dimensions of Unique Tibble") %>%
+  tab_caption(caption = md("Table 3: Dimensions of Unique Data Table"))
+```
+
+# Categrocial Distribution
+```{r categrocial distribution bar plot}
+plot_categorical_distribution <- function(data) {
+  categorical_vars <- data %>%
+    select(where(is.factor) | where(is.character)) %>%
+    select(-PersonID, -HouseID)
+  
+  for (var in names(categorical_vars)) {
+    non_na_data <- data %>%
+      filter(!is.na(.data[[var]]))
+    
+    if (nrow(non_na_data) == 0) next
+    
+    p <- ggplot(non_na_data, aes(x = .data[[var]])) +
+      geom_bar(aes(y = (..count..) / sum(..count..), fill = .data[[var]]), color = "black") +
+      scale_fill_brewer(palette = "Set3") + 
+      labs(title = paste("Proportion of Categories in", var), 
+           x = "Category", 
+           y = "Proportion") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  
+    
+    print(p)
+  }
+}
+
+plot_categorical_distribution(selected_data) 
+```
+# Merge Variable
+```{r merge variable}
+selected_data <- selected_data %>% 
+  mutate(SmokeStatus = recode(SmokeStatus, "2" = "1", "3" = "1","4" = "2","5" = "3"))
+```
+
+# Outliers and New Variables
+```{r variable creation and outliers}
+normal_ranges <- list(Systolic = c(90, 180),
+                      Diastolic = c(60, 120),
+                      BMI = c(16, 47.5), 
+                      PotassiumSodiumRatio = c(0, 4), 
+                      AlcoholPercentage = c(0, 85), 
+                      CarbonhydrateEnergy = c(0, 100), 
+                      FiberEnergy = c(0, 100))
+
+selected_data <- selected_data %>%
+  filter(
+    (is.na(Systolic) | (Systolic >= normal_ranges$Systolic[1] & Systolic <= normal_ranges$Systolic[2])),
+    (is.na(Diastolic) | (Diastolic >= normal_ranges$Diastolic[1] & Diastolic <= normal_ranges$Diastolic[2])),
+    (is.na(BMI) | (BMI >= normal_ranges$BMI[1] & BMI <= normal_ranges$BMI[2])),
+    (is.na(AlcoholPercentage) | (AlcoholPercentage >= normal_ranges$AlcoholPercentage[1] & AlcoholPercentage <= normal_ranges$AlcoholPercentage[2])),
+    (is.na(CarbonhydrateEnergy) | (CarbonhydrateEnergy >= normal_ranges$CarbonhydrateEnergy[1] & CarbonhydrateEnergy <= normal_ranges$CarbonhydrateEnergy[2])),
+    (is.na(FiberEnergy) | (FiberEnergy >= normal_ranges$FiberEnergy[1] & FiberEnergy <= normal_ranges$FiberEnergy[2])),
+    (is.na(PotassiumSodiumRatio) | (PotassiumSodiumRatio >= normal_ranges$PotassiumSodiumRatio[1] & PotassiumSodiumRatio <= normal_ranges$PotassiumSodiumRatio[2]))
+  ) %>%
+  mutate(
+    Hypertension = as.factor(case_when(
+      Systolic >= 120 | Diastolic >= 80 ~ 1,
+      TRUE ~ 0
+    ))
+  )
+ # select(-Sodium, -Potassium)
+```
+
+# Missing Values
+```{r missing value, warning = FALSE}
+selected_data %>% 
+  select(-PersonID, -HouseID) %>% 
+  miss_var_summary() %>% 
+  gt() %>%
+  tab_header(title = "Missing Value") %>%
+  tab_caption(caption = md("Table 4: Missing Values in Selected Data")) %>%
+  cols_label(variable = "Variable Name", n_miss = "Missing Count", pct_miss = "Percentage Missing") %>%
+  fmt_number(columns = everything(), decimals = 2)
+```
+
+```{r heat map}
+corr_matrix <- selected_data%>%
+  select(where(is.numeric)) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, lab = TRUE, 
+           title = "Correlation Heatmap for ALL", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
+```
+
+# Regression Imputation
+```{r regression imputation, fig.height = 5, fig.width= 11}
+selected_data$BMI[is.na(selected_data$BMI)] <- lm(BMI ~ Gender + SocialStatus + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% 
+  predict(newdata = selected_data[is.na(selected_data$BMI), ])
+
+selected_data$Systolic[is.na(selected_data$Systolic)] <- lm(Systolic ~ Gender + SocialStatus + Age + BMI + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% 
+  predict(newdata = selected_data[is.na(selected_data$Systolic), ])
+
+selected_data$Diastolic[is.na(selected_data$Diastolic)] <- lm(Diastolic ~ Gender + SocialStatus + Age + BMI + Systolic + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>%
+  predict(newdata = selected_data[is.na(selected_data$Diastolic), ])
+
+vis_miss(selected_data %>% 
+           select(-PersonID, -HouseID))
+```
+# Normalization
+```{r normalization}
+normalized_data <- selected_data %>% 
+  mutate(across(where(is.numeric), scale))
+```
+# Multicollinearity
+```{r multicollinearity, fig.height=10, fig.width=10}
+selected_data %>% 
+  select(where(is.numeric), -Systolic, -Diastolic) %>% 
+  ggscatmat()
+```
+
+# Logistic Regression
+```{r logistic regression}
+lr <- glm(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+           data = normalized_data, 
+           family = binomial())
+summary(lr)
+```
+
+# Random Forest
+```{r random forest}
+set.seed(123)
+
+rf <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = normalized_data, ntree = 500)
+```
+
+# Support Vector Machine
+```{r svm}
+final_data <- cbind(as.data.frame(predict(dummyVars(~ . - Hypertension - PersonID - HouseID - Systolic - Diastolic, data = normalized_data), 
+                                          newdata = normalized_data)), 
+                    Hypertension = normalized_data$Hypertension)
+
+set.seed(123)
+
+svm <- svm(Hypertension ~ ., 
+           data = final_data,  
+           kernel = "radial", cost = 1, gamma = 0.1)  
+```
+
+# Model comparison (5-fold cross validation)
+```{r}
+set.seed(1234)
+k_folds <- 5
+n_repeats <- 3
+
+logistic_accuracy <- numeric(k_folds * n_repeats)
+logistic_f1 <- numeric(k_folds * n_repeats)
+logistic_sensitivity <- numeric(k_folds * n_repeats)
+logistic_specificity <- numeric(k_folds * n_repeats)
+logistic_precision <- numeric(k_folds * n_repeats)
+
+rf_accuracy <- numeric(k_folds * n_repeats)
+rf_f1 <- numeric(k_folds * n_repeats)
+rf_sensitivity <- numeric(k_folds * n_repeats)
+rf_specificity <- numeric(k_folds * n_repeats)
+rf_precision <- numeric(k_folds * n_repeats)
+
+svm_accuracy <- numeric(k_folds * n_repeats)
+svm_f1 <- numeric(k_folds * n_repeats)
+svm_sensitivity <- numeric(k_folds * n_repeats)
+svm_specificity <- numeric(k_folds * n_repeats)
+svm_precision <- numeric(k_folds * n_repeats)
+
+ensure_factor_levels <- function(predictions, reference) {
+  factor(predictions, levels = levels(reference))
+}
+
+for (repeat_idx in 1:n_repeats) {
+  folds <- createFolds(normalized_data$Hypertension, k = k_folds, list = TRUE, returnTrain = FALSE)
+  
+  for (i in 1:k_folds) {
+    fold_idx <- (repeat_idx - 1) * k_folds + i
+
+    test_indices <- folds[[i]]
+    test_data <- normalized_data[test_indices, ]
+    train_data <- normalized_data[-test_indices, ]
+
+    log_model <- glm(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                     data = train_data, family = binomial())
+    log_predictions <- predict(log_model, test_data, type = "response")
+    log_class <- ifelse(log_predictions > 0.5, 1, 0)
+    log_class <- ensure_factor_levels(log_class, test_data$Hypertension)
+
+    log_conf_matrix <- confusionMatrix(log_class, test_data$Hypertension, positive = "1")
+    logistic_accuracy[fold_idx] <- log_conf_matrix$overall['Accuracy']
+    logistic_f1[fold_idx] <- log_conf_matrix$byClass['F1']
+    logistic_sensitivity[fold_idx] <- log_conf_matrix$byClass['Sensitivity']
+    logistic_specificity[fold_idx] <- log_conf_matrix$byClass['Specificity']
+    logistic_precision[fold_idx] <- log_conf_matrix$byClass['Precision']
+
+    rf_model <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                             data = train_data, ntree = 500)
+    
+    rf_predictions <- predict(rf_model, test_data)
+    rf_predictions <- ensure_factor_levels(rf_predictions, test_data$Hypertension)
+
+    rf_conf_matrix <- confusionMatrix(rf_predictions, test_data$Hypertension, positive = "1")
+    rf_accuracy[fold_idx] <- rf_conf_matrix$overall['Accuracy']
+    rf_f1[fold_idx] <- rf_conf_matrix$byClass['F1']
+    rf_sensitivity[fold_idx] <- rf_conf_matrix$byClass['Sensitivity']
+    rf_specificity[fold_idx] <- rf_conf_matrix$byClass['Specificity']
+    rf_precision[fold_idx] <- rf_conf_matrix$byClass['Precision']
+
+    dummy_model <- dummyVars(~ . - Hypertension - PersonID - HouseID - Systolic - Diastolic, data = train_data)
+    encoded_train_data <- as.data.frame(predict(dummy_model, newdata = train_data))
+    encoded_test_data <- as.data.frame(predict(dummy_model, newdata = test_data))
+    encoded_train_data$Hypertension <- train_data$Hypertension
+    encoded_test_data$Hypertension <- test_data$Hypertension
+
+    svm_model <- svm(Hypertension ~ ., data = encoded_train_data, kernel = "radial", cost = 1, gamma = 0.1)
+    svm_predictions <- predict(svm_model, encoded_test_data)
+    svm_predictions <- ensure_factor_levels(svm_predictions, encoded_test_data$Hypertension)
+
+    svm_conf_matrix <- confusionMatrix(svm_predictions, encoded_test_data$Hypertension, positive = "1")
+    svm_accuracy[fold_idx] <- svm_conf_matrix$overall['Accuracy']
+    svm_f1[fold_idx] <- svm_conf_matrix$byClass['F1']
+    svm_sensitivity[fold_idx] <- svm_conf_matrix$byClass['Sensitivity']
+    svm_specificity[fold_idx] <- svm_conf_matrix$byClass['Specificity']
+    svm_precision[fold_idx] <- svm_conf_matrix$byClass['Precision']
+  }
+}
+
+ave_logistic_accuracy <- mean(logistic_accuracy)
+ave_logistic_f1 <- mean(logistic_f1)
+ave_logistic_sensitivity <- mean(logistic_sensitivity)
+ave_logistic_specificity <- mean(logistic_specificity)
+ave_logistic_precision <- mean(logistic_precision)
+
+ave_rf_accuracy <- mean(rf_accuracy)
+ave_rf_f1 <- mean(rf_f1)
+ave_rf_sensitivity <- mean(rf_sensitivity)
+ave_rf_specificity <- mean(rf_specificity)
+ave_rf_precision <- mean(rf_precision)
+
+ave_svm_accuracy <- mean(svm_accuracy)
+ave_svm_f1 <- mean(svm_f1)
+ave_svm_sensitivity <- mean(svm_sensitivity)
+ave_svm_specificity <- mean(svm_specificity)
+ave_svm_precision <- mean(svm_precision)
+```
+
+```{r}
+results_df <- data.frame(
+    Model = c("Logistic Regression", "Random Forest", "SVM"),
+    Average_Accuracy = c(ave_logistic_accuracy, ave_rf_accuracy, ave_svm_accuarcy),
+    Average_F1 = c(ave_logistic_f1, ave_rf_f1, ave_svm_f1),
+    Average_Sensitivity = c(ave_logistic_sensitivity, ave_rf_sensitivity, ave_svm_sensitivity),
+    Average_Specificity = c(ave_logistic_specificity, ave_rf_specificity, ave_svm_specificity),
+    Average_Precision = c(ave_logistic_precision, ave_rf_precision, ave_svm_precision)
+)
+
+kable(results_df, format = "markdown", caption = "Model Performance Metrics") %>%
+    kable_styling("striped", full_width = F)
+```
