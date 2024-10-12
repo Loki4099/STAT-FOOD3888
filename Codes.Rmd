@@ -468,6 +468,25 @@ fig <- plot_ly(results_long, x = ~Metric, y = ~round(Value, 3), type = 'bar', co
 
 fig
 ```
+```{r}
+# Extract variable importance
+importance_values <- as.data.frame(importance(rf))
+
+# Create a column for variable names
+importance_values$Variable <- rownames(importance_values)
+
+# Sort the importance values based on MeanDecreaseGini or MeanDecreaseAccuracy
+importance_values <- importance_values %>%
+  arrange(desc(MeanDecreaseGini))  # You can use 'MeanDecreaseAccuracy' if you prefer
+
+# Create a custom ggplot for variable importance
+ggplot(importance_values, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_bar(stat = "identity", fill = "#f4978e") +
+  coord_flip() +  # Flip the axes to make it horizontal
+  labs(title = "Variable Importance (Random Forest)", x = "Variables", y = "Mean Decrease in Gini") +
+  theme_minimal()
+```
+
 # PDP
 ## Whole Dataset
 ### All Variables
