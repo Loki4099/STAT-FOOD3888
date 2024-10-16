@@ -1,0 +1,331 @@
+---
+title: "Final_data_clean"
+author: "Group2"
+date: "2024-08-21"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+table-of-contents: true 
+number-sections: true 
+embed-resources: true 
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+
+# Library
+```{r library, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(gt)
+library(naniar)
+library(ggcorrplot)
+library(corrplot)
+library(GGally)
+library(randomForest)
+library(pdp)
+library(e1071)  
+library(dplyr) 
+library(caret)
+library(plotly)
+library(stargazer)
+library(broom)
+library(knitr)
+library(kableExtra)
+
+library(dplyr)
+library(knitr)
+```
+# Data Import
+```{r data import}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+raw_bsp <- read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+raw_bcn <- read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
+raw_bhh <- read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
+```
+# Rename and Created
+```{r rename+Identity}
+bp_bb <- inner_join(raw_bp, raw_bb, by = "ABSPID") %>%
+  rename(HypertensionStatus = HYPBC,
+         BodyMass = SABDYMS,
+         SocialStatus = SF2SA1QN,
+         PersonID = ABSPID,
+         Age = AGEC,
+         Gender = SEX,
+         BMI = BMISC,
+         Systolic = SYSTOL,
+         Diastolic = DIASTOL,
+         SmokeStatus = SMKSTAT,
+         AlcoholPercentage_Day1 = ALCPER1,
+         AlcoholPercentage_Day2 = ALCPER2,
+         Potassium_Day1 = POTAST1,
+         Potassium_Day2 = POTAST2,
+         Sodium_Day1 = SODIUMT1,
+         Sodium_Day2 = SODIUMT2,
+         FiberEnergy_Day1 = FIBRPER1,
+         FiberEnergy_Day2 = FIBRPER2,
+         CarbonhydrateEnergy_Day1 = CHOPER1,
+         CarbonhydrateEnergy_Day2 = CHOPER2,
+         EnergyBMR_Day1 = EIBMR1,
+         EnergyBMR_Day2 = EIBMR2) %>%
+   mutate(Identity = factor(0))
+
+bsp_bhh<- left_join(raw_bsp, raw_bhh,by = c("ABSHID")) %>%
+  rename(BodyMass = SABDYMS,
+         SocialStatus = SF2SA1DB,
+         HouseID = ABSHID,
+         Age = AGEEC,
+         Gender = SEX,
+         BMI = BMISC,
+         Systolic = SYSTOL,
+         Diastolic = DIASTOL,
+         SmokeStatus = SMKSTAT,
+         AlcoholPercentage_Day1 = ALCPER1,
+         AlcoholPercentage_Day2 = ALCPER2,
+         Potassium_Day1 = POTAST1,
+         Potassium_Day2 = POTAST2,
+         Sodium_Day1 = SODIUMT1,
+         Sodium_Day2 = SODIUMT2,
+         FiberEnergy_Day1 = FIBRPER1,
+         FiberEnergy_Day2 = FIBRPER2,
+         CarbonhydrateEnergy_Day1 = CHOPER1,
+         CarbonhydrateEnergy_Day2 = CHOPER2,
+         EnergyBMR_Day1 = EIBMR1,
+         EnergyBMR_Day2 = EIBMR2)%>%
+   mutate(Identity = factor(1))
+
+bcn <- raw_bcn %>%
+  rename(HouseID = ABSHID,
+         MedicalCondition = ICD10ME)
+```
+# First Filter
+```{r filter 1}
+bp_bb <- bp_bb %>%
+  mutate(EnergyBMR_Day1 = na_if(EnergyBMR_Day1, 997) %>% na_if(998),
+         EnergyBMR_Day2 = na_if(EnergyBMR_Day2, 997) %>% na_if(998),
+         EnergyBMR = (EnergyBMR_Day1 + EnergyBMR_Day2)/2) %>%
+  filter(
+    Age >= 18, 
+    HypertensionStatus == 5,
+    BodyMass != 4,
+    (is.na(EnergyBMR) | EnergyBMR >= 0.9))
+
+bsp_bhh <- bsp_bhh %>% 
+  mutate(EnergyBMR_Day1 = na_if(EnergyBMR_Day1, 997) %>% na_if(998),
+         EnergyBMR_Day2 = na_if(EnergyBMR_Day2, 997) %>% na_if(998),
+         EnergyBMR = (EnergyBMR_Day1 + EnergyBMR_Day2)/2) %>%
+  filter(
+    Age >= 18, 
+    BodyMass != 4,
+    !HouseID %in% bcn$HouseID[bcn$MedicalCondition %in% c(7, 20)],
+    (is.na(EnergyBMR) | EnergyBMR >= 0.9))
+```
+# Merge
+```{r merge}
+raw_data <- bind_rows(bp_bb,bsp_bhh)
+```
+
+# Variable Selection
+```{r variable selection}
+selected_data <- raw_data %>%
+select(
+    PersonID, HouseID, SocialStatus, Age, Gender, BMI, Systolic, Diastolic, SmokeStatus, Identity,
+    AlcoholPercentage_Day1, AlcoholPercentage_Day2,
+    Potassium_Day1, Potassium_Day2, 
+    Sodium_Day1, Sodium_Day2,
+    FiberEnergy_Day1, FiberEnergy_Day2, 
+    CarbonhydrateEnergy_Day1, CarbonhydrateEnergy_Day2
+  )
+```
+
+# Na values + New Variables + Type Conversion
+```{r navalue_new_typeconversion}
+selected_data <- selected_data %>%
+  mutate(
+    across(c(Gender, SocialStatus, SmokeStatus), as.factor),
+    BMI = na_if(BMI, 98) %>% na_if(99),
+    Systolic = na_if(Systolic, 0) %>% na_if(998) %>% na_if(999),
+    Diastolic = na_if(Diastolic, 0) %>% na_if(998) %>% na_if(999),
+    Potassium = (Potassium_Day1 + Potassium_Day2) / 2, 
+    Sodium = (Sodium_Day1 + Sodium_Day2) / 2,
+    FiberEnergy = (FiberEnergy_Day1 + FiberEnergy_Day2)/2,
+    CarbonhydrateEnergy = (CarbonhydrateEnergy_Day1 + CarbonhydrateEnergy_Day2) / 2,
+    AlcoholPercentage = (AlcoholPercentage_Day1 + AlcoholPercentage_Day2) /2,
+    PotassiumSodiumRatio = Sodium / Potassium
+    ) %>% 
+  select(PersonID,HouseID, SocialStatus, Age, Gender, BMI, Systolic, Diastolic, SmokeStatus, AlcoholPercentage, PotassiumSodiumRatio, FiberEnergy, CarbonhydrateEnergy, Identity)
+```
+
+# Merge Variable
+```{r merge variable}
+selected_data <- selected_data %>% 
+  mutate(SmokeStatus = recode_factor(SmokeStatus, "2" = "1", "3" = "1","4" = "2","5" = "3"))
+```
+
+# Outliers and New Variables
+```{r variable creation and outliers}
+normal_ranges <- list(Systolic = c(90, 180),
+                      Diastolic = c(60, 120),
+                      BMI = c(16, 47.5), 
+                      PotassiumSodiumRatio = c(0, 4), 
+                      AlcoholPercentage = c(0, 85), 
+                      CarbonhydrateEnergy = c(0, 100), 
+                      FiberEnergy = c(0, 100))
+
+selected_data <- selected_data %>%
+  filter(
+    (is.na(Systolic) | (Systolic >= normal_ranges$Systolic[1] & Systolic <= normal_ranges$Systolic[2])),
+    (is.na(Diastolic) | (Diastolic >= normal_ranges$Diastolic[1] & Diastolic <= normal_ranges$Diastolic[2])),
+    (is.na(BMI) | (BMI >= normal_ranges$BMI[1] & BMI <= normal_ranges$BMI[2])),
+    (is.na(AlcoholPercentage) | (AlcoholPercentage >= normal_ranges$AlcoholPercentage[1] & AlcoholPercentage <= normal_ranges$AlcoholPercentage[2])),
+    (is.na(CarbonhydrateEnergy) | (CarbonhydrateEnergy >= normal_ranges$CarbonhydrateEnergy[1] & CarbonhydrateEnergy <= normal_ranges$CarbonhydrateEnergy[2])),
+    (is.na(FiberEnergy) | (FiberEnergy >= normal_ranges$FiberEnergy[1] & FiberEnergy <= normal_ranges$FiberEnergy[2])),
+    (is.na(PotassiumSodiumRatio) | (PotassiumSodiumRatio >= normal_ranges$PotassiumSodiumRatio[1] & PotassiumSodiumRatio <= normal_ranges$PotassiumSodiumRatio[2]))
+  ) %>%
+  mutate(
+    Hypertension = as.factor(case_when(
+      Systolic >= 120 | Diastolic >= 80 ~ 1,
+      TRUE ~ 0)))
+```
+
+# Regression Imputation
+```{r regression imputation, fig.height = 5, fig.width= 11}
+selected_data$BMI[is.na(selected_data$BMI)] <- lm(BMI ~ Gender + SocialStatus + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% 
+  predict(newdata = selected_data[is.na(selected_data$BMI), ])
+
+selected_data$Systolic[is.na(selected_data$Systolic)] <- lm(Systolic ~ Gender + SocialStatus + Age + BMI + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% 
+  predict(newdata = selected_data[is.na(selected_data$Systolic), ])
+
+selected_data$Diastolic[is.na(selected_data$Diastolic)] <- lm(Diastolic ~ Gender + SocialStatus + Age + BMI + Systolic + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% 
+  predict(newdata = selected_data[is.na(selected_data$Diastolic), ])
+```
+
+```{r}
+riskdata <- selected_data %>% filter(Hypertension == 1)
+noriskdata <- selected_data %>% filter(Hypertension == 0)
+
+format_counts <- function(count, total) {
+  paste(count, "(", round(count / total * 100, 1), "%)", sep = "")
+}
+
+format_mean_sd <- function(mean_val, sd_val) {
+  paste(round(mean_val, 2), "(", round(sd_val, 2), ")", sep = "")
+}
+
+df <- data.frame(
+  Variable = c(
+    "Lowest 20%", "Second quintile", "Third quintile", "Fourth quintile", "Highest 20%*",
+    "Male", "Female",
+    "Currently Smoker", "Ex-Smoker", "Never smoked",
+    "Non Indigenous", "Indigenous",
+    "Age 18-49", "Age >50",
+    "BMI", 
+    "Systolic", "Diastolic", 
+    "Alcohol Percentage", 
+    "Potassium Sodium Ratio", 
+    "Fiber Energy", 
+    "Carbohydrate Energy"
+  ),
+  Group = c(
+    "SocialStatus", "SocialStatus", "SocialStatus", "SocialStatus", "SocialStatus",
+    "Gender", "Gender",
+    "SmokeStatus", "SmokeStatus", "SmokeStatus",
+    "Identity", "Identity",
+    "Age", "Age",
+    NA, NA, NA, NA, NA, NA, NA
+  ),
+  Total = c(
+    format_counts(sum(selected_data$SocialStatus == 1), nrow(selected_data)),
+    format_counts(sum(selected_data$SocialStatus == 2), nrow(selected_data)),
+    format_counts(sum(selected_data$SocialStatus == 3), nrow(selected_data)),
+    format_counts(sum(selected_data$SocialStatus == 4), nrow(selected_data)),
+    format_counts(sum(selected_data$SocialStatus == 5), nrow(selected_data)),
+    format_counts(sum(selected_data$Gender == 1), nrow(selected_data)),
+    format_counts(sum(selected_data$Gender == 2), nrow(selected_data)),
+    format_counts(sum(selected_data$SmokeStatus == 1), nrow(selected_data)),
+    format_counts(sum(selected_data$SmokeStatus == 2), nrow(selected_data)),
+    format_counts(sum(selected_data$SmokeStatus == 3), nrow(selected_data)),
+    format_counts(sum(selected_data$Identity == 0), nrow(selected_data)),
+    format_counts(sum(selected_data$Identity == 1), nrow(selected_data)),
+    format_counts(sum(selected_data$Age >= 18 & selected_data$Age <= 49), nrow(selected_data)),
+    format_counts(sum(selected_data$Age > 50), nrow(selected_data)),
+    format_mean_sd(mean(selected_data$BMI), sd(selected_data$BMI)),
+    format_mean_sd(mean(selected_data$Systolic), sd(selected_data$Systolic)),
+    format_mean_sd(mean(selected_data$Diastolic), sd(selected_data$Diastolic)),
+    format_mean_sd(mean(selected_data$AlcoholPercentage), sd(selected_data$AlcoholPercentage)),
+    format_mean_sd(mean(selected_data$PotassiumSodiumRatio), sd(selected_data$PotassiumSodiumRatio)),
+    format_mean_sd(mean(selected_data$FiberEnergy), sd(selected_data$FiberEnergy)),
+    format_mean_sd(mean(selected_data$CarbonhydrateEnergy), sd(selected_data$CarbonhydrateEnergy))
+  ),
+  HypertensionRisk = c(
+    format_counts(sum(riskdata$SocialStatus == 1), nrow(riskdata)),
+    format_counts(sum(riskdata$SocialStatus == 2), nrow(riskdata)),
+    format_counts(sum(riskdata$SocialStatus == 3), nrow(riskdata)),
+    format_counts(sum(riskdata$SocialStatus == 4), nrow(riskdata)),
+    format_counts(sum(riskdata$SocialStatus == 5), nrow(riskdata)),
+    format_counts(sum(riskdata$Gender == 1), nrow(riskdata)),
+    format_counts(sum(riskdata$Gender == 2), nrow(riskdata)),
+    format_counts(sum(riskdata$SmokeStatus == 1), nrow(riskdata)),
+    format_counts(sum(riskdata$SmokeStatus == 2), nrow(riskdata)),
+    format_counts(sum(riskdata$SmokeStatus == 3), nrow(riskdata)),
+    format_counts(sum(riskdata$Identity == 0), nrow(riskdata)),
+    format_counts(sum(riskdata$Identity == 1), nrow(riskdata)),
+    format_counts(sum(riskdata$Age >= 18 & riskdata$Age <= 49), nrow(riskdata)),
+    format_counts(sum(riskdata$Age > 50), nrow(riskdata)),
+    format_mean_sd(mean(riskdata$BMI), sd(riskdata$BMI)),
+    format_mean_sd(mean(riskdata$Systolic), sd(riskdata$Systolic)),
+    format_mean_sd(mean(riskdata$Diastolic), sd(riskdata$Diastolic)),
+    format_mean_sd(mean(riskdata$AlcoholPercentage), sd(riskdata$AlcoholPercentage)),
+    format_mean_sd(mean(riskdata$PotassiumSodiumRatio), sd(riskdata$PotassiumSodiumRatio)),
+    format_mean_sd(mean(riskdata$FiberEnergy), sd(riskdata$FiberEnergy)),
+    format_mean_sd(mean(riskdata$CarbonhydrateEnergy), sd(riskdata$CarbonhydrateEnergy))
+  ),
+  NoHypertensionRisk = c(
+    format_counts(sum(noriskdata$SocialStatus == 1), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SocialStatus == 2), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SocialStatus == 3), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SocialStatus == 4), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SocialStatus == 5), nrow(noriskdata)),
+    format_counts(sum(noriskdata$Gender == 1), nrow(noriskdata)),
+    format_counts(sum(noriskdata$Gender == 2), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SmokeStatus == 1), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SmokeStatus == 2), nrow(noriskdata)),
+    format_counts(sum(noriskdata$SmokeStatus == 3), nrow(noriskdata)),
+    format_counts(sum(noriskdata$Identity == 0), nrow(noriskdata)),
+    format_counts(sum(noriskdata$Identity == 1), nrow(noriskdata)),
+    format_counts(sum(noriskdata$Age >= 18 & noriskdata$Age <= 49), nrow(noriskdata)),
+    format_counts(sum(noriskdata$Age > 50), nrow(noriskdata)),
+    format_mean_sd(mean(noriskdata$BMI), sd(noriskdata$BMI)),
+    format_mean_sd(mean(noriskdata$Systolic), sd(noriskdata$Systolic)),
+    format_mean_sd(mean(noriskdata$Diastolic), sd(noriskdata$Diastolic)),
+    format_mean_sd(mean(noriskdata$AlcoholPercentage), sd(noriskdata$AlcoholPercentage)),
+    format_mean_sd(mean(noriskdata$PotassiumSodiumRatio), sd(noriskdata$PotassiumSodiumRatio)),
+    format_mean_sd(mean(noriskdata$FiberEnergy), sd(noriskdata$FiberEnergy)),
+    format_mean_sd(mean(noriskdata$CarbonhydrateEnergy), sd(noriskdata$CarbonhydrateEnergy))
+  )
+)
+
+total_count <- nrow(selected_data)
+risk_count <- nrow(riskdata)
+no_risk_count <- nrow(noriskdata)
+
+df %>% 
+  format_table(ci_brackets = c("(", ")")) %>% 
+  export_table(format = "html",
+               title = "Demographic and Health Characteristics by Hypertension Status")
+```
