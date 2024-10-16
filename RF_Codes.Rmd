@@ -31,6 +31,7 @@ library(stargazer)
 library(broom)
 library(knitr)
 library(kableExtra)
+library(gridExtra)
 ```
 # Data Import
 ```{r data import}
@@ -453,9 +454,9 @@ fig
 
 ```{r group by age}
 scaled_data_young <- selected_data %>%
-  filter(Age < 50)
+  filter(Age < 65)
 scaled_data_old <- selected_data %>%
-  filter(Age >= 50)
+  filter(Age >= 65)
 
 # 对年龄小于 50 岁的组进行标准化
 numeric_data_young <- scaled_data_young %>% select_if(is.numeric)
@@ -473,6 +474,11 @@ scaled_numeric_data_old <- predict(preprocess_params_old, numeric_data_old)
 # 重新组合数值列和非数值列
 scaled_data_old <- bind_cols(scaled_numeric_data_old, scaled_data_old %>% select_if(Negate(is.numeric)))
 ```
+
+```{r}
+summary(scaled_data_old)
+```
+
 ### All population
 
 ```{r}
@@ -509,12 +515,8 @@ rf_old_model <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + 
 rf_old_model
 ```
 
-```{r,width=10}
-library(ggplot2)
-library(randomForest)
-library(gridExtra)
-
-
+### Importance comparison between three models
+```{r fig.width=15, fig.height= 6}
 importance_young <- as.data.frame(importance(rf_young_model))
 importance_overall <- as.data.frame(importance(rf_model))
 importance_old <- as.data.frame(importance(rf_old_model))
@@ -527,7 +529,7 @@ importance_old$Variable <- rownames(importance_old)
 
 all_vars <- unique(c(importance_young$Variable, importance_overall$Variable, importance_old$Variable))
 
-p1 <- ggplot(importance_young, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+p2 <- ggplot(importance_young, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
   geom_point(color = "skyblue", size = 3) +
   coord_flip() +
   scale_x_discrete(limits = all_vars) +  # 确保变量顺序一致
@@ -538,7 +540,7 @@ p1 <- ggplot(importance_young, aes(x = reorder(Variable, MeanDecreaseGini), y = 
         axis.text.y = element_text(size = 10),
         axis.title.x = element_text(size = 12))
 
-p2 <- ggplot(importance_overall, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+p1 <- ggplot(importance_overall, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
   geom_point(color = "lightcoral", size = 3) +
   coord_flip() +
   scale_x_discrete(limits = all_vars) +  # 确保变量顺序一致
@@ -565,118 +567,8 @@ grid.arrange(p1, p2, p3, ncol = 3)
 
 
 # PDP Plot
-```{r}
-# Define the variables for which you want to generate PDP
-variables <- c( "CarbonhydrateEnergy", "FiberEnergy")
 
-# Set up color palette for the two classes
-pal <- c("blue", "red")
-
-# Set up a 2x3 grid layout for plotting multiple PDPs
-par(mfrow = c(2, 3))  # 2 rows, 3 columns
-
-# Loop through each variable to plot the PDP for each one
-for (var in variables) {
-  
-  # Generate PDP for class 0 (Hypertension = 0)
-  pdp_class0 <- pdp::partial(rf_model, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
-  
-  # Generate PDP for class 1 (Hypertension = 1)
-  pdp_class1 <- pdp::partial(rf_model, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-  
-  # Plot each variable's PDP using base R
-  plot(NA, xlim = range(scaled_data[[var]]), ylim = c(0, 1), 
-       main = paste("PDP for", var, "Predicting Hypertension"), 
-       ylab = "Partial Dependence", xlab = var)
-  
-  # Draw lines for both classes
-  lines(pdp_class0, col = pal[1], lwd = 2)
-  lines(pdp_class1, col = pal[2], lwd = 2)
-  
-  # Add legend to differentiate between the two classes
-  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
-}
-
-# Reset the plotting layout back to default
-par(mfrow = c(1, 1))
-```
-```{r}
-# Define the variables for which you want to generate PDP
-variables <- c( "CarbonhydrateEnergy", "FiberEnergy")
-
-# Set up color palette for the two classes
-pal <- c("blue", "red")
-
-# Set up a 2x3 grid layout for plotting multiple PDPs
-par(mfrow = c(2, 3))  # 2 rows, 3 columns
-
-# Loop through each variable to plot the PDP for each one
-for (var in variables) {
-  
-  # Generate PDP for class 0 (Hypertension = 0)
-  pdp_class0 <- pdp::partial(rf_young_model, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
-  
-  # Generate PDP for class 1 (Hypertension = 1)
-  pdp_class1 <- pdp::partial(rf_young_model, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-  
-  # Plot each variable's PDP using base R
-  plot(NA, xlim = range(scaled_data_young[[var]]), ylim = c(0, 1), 
-       main = paste("PDP for", var, "Predicting Hypertension"), 
-       ylab = "Partial Dependence", xlab = var)
-  
-  # Draw lines for both classes
-  lines(pdp_class0, col = pal[1], lwd = 2)
-  lines(pdp_class1, col = pal[2], lwd = 2)
-  
-  # Add legend to differentiate between the two classes
-  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
-}
-
-# Reset the plotting layout back to default
-par(mfrow = c(1, 1))
-```
-
-```{r}
-# Define the variables for which you want to generate PDP
-variables <- c( "CarbonhydrateEnergy", "FiberEnergy")
-
-# Set up color palette for the two classes
-pal <- c("blue", "red")
-
-# Set up a 2x3 grid layout for plotting multiple PDPs
-par(mfrow = c(2, 3))  # 2 rows, 3 columns
-
-# Loop through each variable to plot the PDP for each one
-for (var in variables) {
-  
-  # Generate PDP for class 0 (Hypertension = 0)
-  pdp_class0 <- pdp::partial(rf_old_model, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 1, rug = TRUE)
-  
-  # Generate PDP for class 1 (Hypertension = 1)
-  pdp_class1 <- pdp::partial(rf_old_model, pred.var = var, prob = TRUE, 
-                             plot = FALSE, type = "classification", which.class = 2, rug = TRUE)
-  
-  # Plot each variable's PDP using base R
-  plot(NA, xlim = range(scaled_data_old[[var]]), ylim = c(0, 1), 
-       main = paste("PDP for", var, "Predicting Hypertension"), 
-       ylab = "Partial Dependence", xlab = var)
-  
-  # Draw lines for both classes
-  lines(pdp_class0, col = pal[1], lwd = 2)
-  lines(pdp_class1, col = pal[2], lwd = 2)
-  
-  # Add legend to differentiate between the two classes
-  legend("topleft", legend = c("Hypertension = 0", "Hypertension = 1"), col = pal, lwd = 2)
-}
-
-# Reset the plotting layout back to default
-par(mfrow = c(1, 1))
-```
+# PDP Plot
 
 ```{r}
 rf1 = randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, data = scaled_data, ntree = 500, importance = TRUE, proximity = TRUE)
@@ -688,27 +580,26 @@ rf6 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy
 ```
 
 
-
-
-```{r}
-library(pdp)
-library(ggplot2)
-library(patchwork)
-
-# Define the models and the variables of interest
-models <- list(rf1, rf2, rf3, rf4, rf5, rf6)
-model_names <- c("rf1", "rf2", "rf3", "rf4", "rf5", "rf6")
+```{r fig.width= 15, fig.height= 18}
+models <- list(rf1, rf4, rf2, rf5, rf3, rf6)
+model_names <- c("A", "a", "B", "b", "C", "c")
 variables <- c("CarbonhydrateEnergy", "FiberEnergy")
 
 # Create a color palette for the classes
-pal <- c("#f4978e", "#3b9ad0")  # Adjust the colors as needed
+pal <- c("#3b9ad0", "#f4978e")  # Adjust the colors as needed
+
+# Extract the legend function
+get_legend <- function(plot) {
+  g <- ggplotGrob(plot)
+  legend <- g$grobs[[which(sapply(g$grobs, function(x) x$name) == "guide-box")]]
+  return(legend)
+}
 
 # Loop through each variable to generate and print the PDPs
 for (variable in variables) {
-  # Initialize an empty list to store plots
-  plots <- list()
+  plots <- list()  # Initialize an empty list to store plots
   
-  # Loop through each model to generate the PDPs for the current variable
+  # Loop through each model to generate PDPs for the current variable
   for (i in seq_along(models)) {
     model <- models[[i]]
     model_name <- model_names[i]
@@ -721,28 +612,296 @@ for (variable in variables) {
                                plot = FALSE, type = "classification", 
                                which.class = 2, rug = TRUE)
     
-    # Create the plot
+    # Create the plot with a shared legend
     p <- ggplot() +
-      geom_line(data = pdp_class0, aes_string(x = variable, y = "yhat"), color = pal[1], size = 1) +
-      geom_line(data = pdp_class1, aes_string(x = variable, y = "yhat"), color = pal[2], size = 1) +
-      labs(title = paste("PDP for", variable, "Predicting Hypertension\n(Model:", model_name, ")"),
-           y = "Partial Dependence", x = variable) +
+      geom_line(data = pdp_class0, aes_string(x = variable, y = "yhat", color = "'Class 0'"), size = 1) +
+      geom_line(data = pdp_class1, aes_string(x = variable, y = "yhat", color = "'Class 1'"), size = 1) +
+      labs(title = paste("Model:", model_name), y = "Partial Dependence", x = variable) +
       theme_minimal() +
-      scale_y_continuous(limits = c(0, 1))  # Set y limits between 0 and 1
+      scale_y_continuous(limits = c(0, 1)) +  # Set y-axis limits between 0 and 1
+      scale_color_manual(values = pal)  # Use the custom color palette
     
     # Store the plot in the list
     plots[[i]] <- p
   }
   
-  # Combine all plots into one figure for the current variable
-  combined_plot <- wrap_plots(plots, ncol = 2)  # Arrange plots in 2 columns
-  
-  # Print the combined plot
-  print(combined_plot)
-}  
+  # Extract the legend from one of the plots
+  legend <- get_legend(plots[[1]])
+
+  # Combine all plots into a grid (first column: A, B, C; second column: D, E, F)
+  combined_plot <- wrap_plots(plots, ncol = 2, byrow = TRUE)  # Arrange in 2 columns
+
+  # Add the legend below the combined plot
+  final_plot <- combined_plot + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+  # Print the final plot with the outside legend
+  print(final_plot)
+}
+
 ```
 
 
+```{r}
+library(pdp)
+library(lattice)  # for 3D plots
+
+# Define the models and the variables of interest
+models <- list(rf1, rf2, rf3, rf4, rf5, rf6)
+model_names <- c("rf1", "rf2", "rf3", "rf4", "rf5", "rf6")
+
+# Create an empty list to store all the plots
+plots <- list()
+
+# Loop through each model to generate 3D PDP plots
+for (i in seq_along(models)) {
+  model <- models[[i]]
+  model_name <- model_names[i]
+  
+  # Create 3D partial dependence for the two variables
+  pdp_3d <- pdp::partial(model, pred.var = c("CarbonhydrateEnergy", "FiberEnergy"), prob = TRUE, 
+                         plot = FALSE, type = "classification", rug = TRUE)
+  
+  # Create the 3D plot and store it in the list
+  p <- plotPartial(pdp_3d, levelplot = FALSE, zlab = "yhat", drape = TRUE,
+                   colorkey = TRUE, screen = list(z = 220, x = -40),
+                   main = paste("3D PDP for", model_name))
+  
+  # Save the plot to the list
+  plots[[i]] <- p
+}
+
+# Combine the plots in a 3x2 layout (or 2x3, depending on interpretation)
+print(plots[[1]], split = c(1, 1, 3, 2), more = TRUE)  # First row, first column
+print(plots[[4]], split = c(1, 2, 3, 2), more = TRUE)  # Second row, first column
+print(plots[[2]], split = c(2, 1, 3, 2), more = TRUE)  # First row, second column
+print(plots[[5]], split = c(2, 2, 3, 2), more = TRUE)  # Second row, second column
+print(plots[[3]], split = c(3, 1, 3, 2), more = TRUE)  # First row, third column
+print(plots[[6]], split = c(3, 2, 3, 2))               # Second row, third column
+```
+## Group by BMI
+
+```{r group by age}
+# Group by BMI categories
+scaled_data_light <- selected_data %>%
+  filter(BMI < 24.9)  # Group with BMI < 18.5
+
+scaled_data_normal <- selected_data %>%
+  filter(BMI >= 24.9 & BMI <= 29.9)  # Group with BMI between 18.5 and 24.9
+
+scaled_data_heavy <- selected_data %>%
+  filter(BMI > 29.9)  # Group with BMI > 24.9
+
+# For the group with BMI < 18.5
+numeric_data_light <- scaled_data_light %>% select_if(is.numeric)
+preprocess_params_light <- preProcess(numeric_data_light, method = c("center", "scale"))
+scaled_numeric_data_light <- predict(preprocess_params_light, numeric_data_light)
+scaled_data_light <- bind_cols(scaled_numeric_data_light, scaled_data_light %>% select_if(Negate(is.numeric)))
+
+# For the group with BMI between 18.5 and 24.9
+numeric_data_normal <- scaled_data_normal %>% select_if(is.numeric)
+preprocess_params_normal <- preProcess(numeric_data_normal, method = c("center", "scale"))
+scaled_numeric_data_normal <- predict(preprocess_params_normal, numeric_data_normal)
+scaled_data_normal <- bind_cols(scaled_numeric_data_normal, scaled_data_normal %>% select_if(Negate(is.numeric)))
+
+# For the group with BMI > 24.9
+numeric_data_heavy <- scaled_data_heavy %>% select_if(is.numeric)
+preprocess_params_heavy <- preProcess(numeric_data_heavy, method = c("center", "scale"))
+scaled_numeric_data_heavy <- predict(preprocess_params_heavy, numeric_data_heavy)
+scaled_data_heavy <- bind_cols(scaled_numeric_data_heavy, scaled_data_heavy %>% select_if(Negate(is.numeric)))
+```
+
+### light Population
+```{r}
+set.seed(3888)
+rf_light_model <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                             data = scaled_data_light, ntree = 500)
+
+```
+
+### Normal Population
+```{r}
+set.seed(3888)
+rf_normal_model <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                             data = scaled_data_normal, ntree = 500)
+```
+
+### Obesity Population
+```{r}
+set.seed(3888)
+rf_heavy_model <- randomForest(Hypertension ~ SocialStatus + Gender + Age + BMI + SmokeStatus + AlcoholPercentage + FiberEnergy + CarbonhydrateEnergy + Identity + PotassiumSodiumRatio, 
+                             data = scaled_data_heavy, ntree = 500)
+```
+
+### Importance comparison between four models
+```{r fig.width=15, fig.height= 6}
+importance_overall <- as.data.frame(importance(rf_model))
+importance_light <- as.data.frame(importance(rf_light_model))
+importance_normal <- as.data.frame(importance(rf_normal_model))
+importance_heavy <- as.data.frame(importance(rf_heavy_model))
+
+importance_overall$Variable <- rownames(importance_overall)
+importance_light$Variable <- rownames(importance_light)
+importance_normal$Variable <- rownames(importance_normal)
+importance_heavy$Variable <- rownames(importance_heavy)
+
+
+all_vars <- unique(c(importance_overall$Variable, importance_light$Variable, importance_normal$Variable, importance_heavy$Variable))
+
+p1 <- ggplot(importance_overall, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_point(color = "lightcoral", size = 3) +
+  coord_flip() +
+  scale_x_discrete(limits = all_vars) +  # 确保变量顺序一致
+  labs(x = "Variable", y = "Mean Decrease Gini") +  # 添加清晰的 x 和 y 轴标签
+  ggtitle("Overall Group") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.y = element_text(size = 10),
+        axis.title.x = element_text(size = 12))
+
+p2 <- ggplot(importance_light, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_point(color = "skyblue", size = 3) +
+  coord_flip() +
+  scale_x_discrete(limits = all_vars) +  # 确保变量顺序一致
+  labs(x = "Variable", y = "Mean Decrease Gini") +  # 添加清晰的 x 和 y 轴标签
+  ggtitle("Light Group") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.y = element_text(size = 10),
+        axis.title.x = element_text(size = 12))
+
+p3 <- ggplot(importance_normal, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_point(color = "yellow", size = 3) +
+  coord_flip() +
+  scale_x_discrete(limits = all_vars) +  # 确保变量顺序一致
+  labs(x = "Variable", y = "Mean Decrease Gini") +  # 添加清晰的 x 和 y 轴标签
+  ggtitle("Normal Group") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.y = element_text(size = 10),
+        axis.title.x = element_text(size = 12))
+
+p4 <- ggplot(importance_heavy, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_point(color = "mediumseagreen", size = 3) +
+  coord_flip() +
+  scale_x_discrete(limits = all_vars) +  # 确保变量顺序一致
+  labs(x = "Variable", y = "Mean Decrease Gini") +  # 添加清晰的 x 和 y 轴标签
+  ggtitle("Heavy Group") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold"),
+        axis.text.y = element_text(size = 10),
+        axis.title.x = element_text(size = 12))
+
+grid.arrange(p1, p2, p3, p4, ncol = 3)
+```
+
+# PDP Plot
+
+```{r}
+rf21 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = scaled_data, ntree = 500, importance = TRUE, proximity = TRUE)
+
+rf22 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = scaled_data_light, ntree = 500, importance = TRUE, proximity = TRUE)
+
+rf23 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = scaled_data_normal, ntree = 500, importance = TRUE, proximity = TRUE)
+
+rf24 = randomForest(Hypertension ~ BMI + Age + PotassiumSodiumRatio + FiberEnergy + CarbonhydrateEnergy,data = scaled_data_heavy, ntree = 500, importance = TRUE, proximity = TRUE)
+```
+
+
+```{r fig.width= 15, fig.height= 18}
+models <- list(rf21, rf22, rf23, rf24)
+model_names <- c("O", "L", "N", "H")
+variables <- c("CarbonhydrateEnergy", "FiberEnergy")
+
+# Create a color palette for the classes
+pal <- c("#3b9ad0", "#f4978e")  # Adjust the colors as needed
+
+# Extract the legend function
+get_legend <- function(plot) {
+  g <- ggplotGrob(plot)
+  legend <- g$grobs[[which(sapply(g$grobs, function(x) x$name) == "guide-box")]]
+  return(legend)
+}
+
+# Loop through each variable to generate and print the PDPs
+for (variable in variables) {
+  plots <- list()  # Initialize an empty list to store plots
+  
+  # Loop through each model to generate PDPs for the current variable
+  for (i in seq_along(models)) {
+    model <- models[[i]]
+    model_name <- model_names[i]
+    
+    # Create partial dependence for both classes
+    pdp_class0 <- pdp::partial(model, pred.var = variable, prob = TRUE, 
+                               plot = FALSE, type = "classification", 
+                               which.class = 1, rug = TRUE)
+    pdp_class1 <- pdp::partial(model, pred.var = variable, prob = TRUE, 
+                               plot = FALSE, type = "classification", 
+                               which.class = 2, rug = TRUE)
+    
+    # Create the plot with a shared legend
+    p <- ggplot() +
+      geom_line(data = pdp_class0, aes_string(x = variable, y = "yhat", color = "'Class 0'"), size = 1) +
+      geom_line(data = pdp_class1, aes_string(x = variable, y = "yhat", color = "'Class 1'"), size = 1) +
+      labs(title = paste("Model:", model_name), y = "Partial Dependence", x = variable) +
+      theme_minimal() +
+      scale_y_continuous(limits = c(0, 1)) +  # Set y-axis limits between 0 and 1
+      scale_color_manual(values = pal)  # Use the custom color palette
+    
+    # Store the plot in the list
+    plots[[i]] <- p
+  }
+  
+  # Extract the legend from one of the plots
+  legend <- get_legend(plots[[1]])
+
+  # Combine all plots into a grid (first column: A, B, C; second column: D, E, F)
+  combined_plot <- wrap_plots(plots, ncol = 2, byrow = TRUE)  # Arrange in 2 columns
+
+  # Add the legend below the combined plot
+  final_plot_2 <- combined_plot + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+  # Print the final plot with the outside legend
+  print(final_plot_2)
+}
+
+```
+
+```{r}
+library(pdp)
+library(lattice)  # for 3D plots
+
+# Define the models and the variables of interest
+models <- list(rf21, rf22, rf23, rf24)
+model_names <- c("O", "L", "N", "H")
+
+# Create an empty list to store all the plots
+plots <- list()
+
+# Loop through each model to generate 3D PDP plots
+for (i in seq_along(models)) {
+  model <- models[[i]]
+  model_name <- model_names[i]
+  
+  # Create 3D partial dependence for the two variables
+  pdp_3d <- pdp::partial(model, pred.var = c("CarbonhydrateEnergy", "FiberEnergy"), prob = TRUE, 
+                         plot = FALSE, type = "classification", rug = TRUE)
+  
+  # Create the 3D plot and store it in the list
+  p <- plotPartial(pdp_3d, levelplot = FALSE, zlab = "yhat", drape = TRUE,
+                   colorkey = TRUE, screen = list(z = 220, x = -40),
+                   main = paste("3D PDP for", model_name))
+  
+  # Save the plot to the list
+  plots[[i]] <- p
+}
+
+# Combine the plots in a 2x4 layout
+print(plots[[1]], split = c(1, 1, 4, 2), more = TRUE)  # First row, first column
+print(plots[[2]], split = c(2, 1, 4, 2), more = TRUE)  # First row, second column
+print(plots[[3]], split = c(3, 1, 4, 2), more = TRUE)  # First row, third column
+print(plots[[4]], split = c(4, 1, 4, 2))               # First row, fourth column
+```
 
 
 
