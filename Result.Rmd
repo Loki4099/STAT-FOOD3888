@@ -453,6 +453,40 @@ correlation_table_mic_kendall %>%
   fmt_number(columns = c(Kendall_Correlation, MIC_Correlation), decimals = 3)
 ```
 
+```{r Anova table(Table10)}
+# Perform ANOVA tests
+anova_fiber_systolic <- aov(Systolic ~ FiberEnergy, data = selected_data)
+anova_fiber_diastolic <- aov(Diastolic ~ FiberEnergy, data = selected_data)
+anova_carb_systolic <- aov(Systolic ~ CarbohydrateEnergy, data = selected_data)
+anova_carb_diastolic <- aov(Diastolic ~ CarbohydrateEnergy, data = selected_data)
+
+# Create a table summarizing F-statistic and p-value
+anova_table <- data.frame(
+  Measure = c("FiberEnergy vs Systolic", "FiberEnergy vs Diastolic", 
+              "CarbohydrateEnergy vs Systolic", "CarbohydrateEnergy vs Diastolic"),
+  F_Statistic = c(
+    summary(anova_fiber_systolic)[[1]]$`F value`[1], 
+    summary(anova_fiber_diastolic)[[1]]$`F value`[1], 
+    summary(anova_carb_systolic)[[1]]$`F value`[1], 
+    summary(anova_carb_diastolic)[[1]]$`F value`[1]
+  ),
+  P_Value = c(
+    summary(anova_fiber_systolic)[[1]]$`Pr(>F)`[1], 
+    summary(anova_fiber_diastolic)[[1]]$`Pr(>F)`[1], 
+    summary(anova_carb_systolic)[[1]]$`Pr(>F)`[1], 
+    summary(anova_carb_diastolic)[[1]]$`Pr(>F)`[1]
+  )
+)
+
+# Build the table with gt
+anova_table %>%
+  gt() %>%
+  tab_header(
+    title = "ANOVA Test Results: Nutrient Energy Intake vs Blood Pressure"
+  ) %>%
+  fmt_number(columns = c(F_Statistic, P_Value), decimals = 3)
+```
+
 # Model comparison
 
 GAM
