@@ -675,7 +675,7 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar',
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE, titleX = TRUE) %>%
+SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(title = list(text = "Figure6.1: RMSE Comparison(Systolic)[Left], Figure 6.2: MAE Comparison(Systolic)[Middle], Figure 6.3: R² Comparison(Systolic)[Right]", 
                       font = list(size = 12)))
 
