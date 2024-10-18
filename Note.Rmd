@@ -566,7 +566,7 @@ fiber_color <- "blue"
 plot(systolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_male Group - Systolic - FiberEnergy")
 plot(diastolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "diastolic_male Group - Diastolic - FiberEnergy")
 plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_female Group - Systolic - FiberEnergy")
-plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_female Group - Diastolic - FiberEnergy")
+plot(diastolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_female Group - Diastolic - FiberEnergy")
 
 par(mfrow = c(1, 1))
 ```
@@ -579,7 +579,7 @@ carb_color <- "red"
 plot(systolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_male Group - Systolic - CarbohydrateEnergy")
 plot(diastolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "diastolic_male Group - Systolic - CarbohydrateEnergy")
 plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_female Group - Diastolic - CarbohydrateEnergy")
-plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_female Group - Diastolic - CarbohydrateEnergy")
+plot(diastolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_female Group - Diastolic - CarbohydrateEnergy")
 
 par(mfrow = c(1, 1))
 ```
