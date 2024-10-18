@@ -178,3 +178,352 @@ Diastolic_gam <- function(data) {
   
   return(summary_results)
 }
+
+
+
+
+
+
+
+# Whole section
+
+
+# Age groups
+
+
+```{r stratify by age warning = FALSE, message=FALSE}
+age1 <- selected_data %>%
+  filter(Age < 35)
+
+age2 <- selected_data %>%
+  filter(Age >= 35 & Age < 65)
+
+age3 <- selected_data %>%
+  filter(Age >= 65)
+
+preprocess_params <- preProcess(age1, method = c("center", "scale"))
+scaled_numeric_age1 <- predict(preprocess_params, age1)
+normalized_age1 <- bind_cols(scaled_numeric_age1, age1 %>% dplyr::select_if(Negate(is.numeric)))
+
+preprocess_params <- preProcess(age1, method = c("center", "scale"))
+scaled_numeric_age2 <- predict(preprocess_params, age2)
+normalized_age2 <- bind_cols(scaled_numeric_age2, age2 %>% dplyr::select_if(Negate(is.numeric)))
+
+preprocess_params <- preProcess(age1, method = c("center", "scale"))
+scaled_numeric_age3 <- predict(preprocess_params, age3)
+normalized_age3 <- bind_cols(scaled_numeric_age3, age3 %>% dplyr::select_if(Negate(is.numeric)))
+```
+
+
+## Systolic
+```{r}
+library(purrr)
+
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+sys_cv <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Systolic
+      
+      gam_model <- gam(Systolic ~ s(FiberEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+
+results_age1 <- sys_cv(normalized_age1)
+results_age2 <- sys_cv(normalized_age2)
+results_age3 <- sys_cv(normalized_age3)
+
+gam_rmse_diastolic_ag1 <- results_age1$mean_rmse
+gam_mae_diastolic_ag1 <- results_age1$mean_mae
+gam_r2_diastolic_ag1 <- results_age1$mean_r2
+
+gam_rmse_diastolic_ag2 <- results_age2$mean_rmse
+gam_mae_diastolic_ag2 <- results_age2$mean_mae
+gam_r2_diastolic_ag2 <- results_age2$mean_r2
+
+gam_rmse_diastolic_ag3 <- results_age3$mean_rmse
+gam_mae_diastolic_ag3 <- results_age3$mean_mae
+gam_r2_diastolic_ag3 <- results_age3$mean_r2
+```
+
+```{r}
+Systolic_df <- data.frame(
+    Model = c("Age1", "Age2","Age3"),
+    RMSE = c(gam_rmse_diastolic_ag1, gam_rmse_diastolic_ag2, gam_rmse_diastolic_ag3),
+    MAE = c(gam_mae_diastolic_ag1, gam_mae_diastolic_ag2, gam_mae_diastolic_ag3),
+    R2 = c(gam_r2_diastolic_ag1, gam_r2_diastolic_ag2, gam_r2_diastolic_ag3)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#F8766D', '#A3A500', '#E76BF3')
+
+rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure7.1: RMSE Comparison(Systolic)[Left], Figure 7.2: MAE Comparison(Systolic)[Middle], Figure 7.3: R² Comparison(Systolic)[Right]", 
+                      font = list(size = 12)))
+
+AgeSystolicFig
+```
+
+## Diastolic
+
+
+```{r}
+library(purrr)
+
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+# Cross-validation function for Diastolic
+diastolic_cv <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Diastolic
+      
+      gam_model <- gam(Diastolic ~ s(FiberEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+
+# Run cross-validation on the three datasets for Diastolic
+results_age1 <- diastolic_cv(normalized_age1)
+results_age2 <- diastolic_cv(normalized_age2)
+results_age3 <- diastolic_cv(normalized_age3)
+
+# Store results for Diastolic
+gam_rmse_diastolic_ag1 <- results_age1$mean_rmse
+gam_mae_diastolic_ag1 <- results_age1$mean_mae
+gam_r2_diastolic_ag1 <- results_age1$mean_r2
+
+gam_rmse_diastolic_ag2 <- results_age2$mean_rmse
+gam_mae_diastolic_ag2 <- results_age2$mean_mae
+gam_r2_diastolic_ag2 <- results_age2$mean_r2
+
+gam_rmse_diastolic_ag3 <- results_age3$mean_rmse
+gam_mae_diastolic_ag3 <- results_age3$mean_mae
+gam_r2_diastolic_ag3 <- results_age3$mean_r2
+
+```
+
+
+```{r}
+# Create a data frame for Diastolic results
+Diastolic_df <- data.frame(
+    Model = c("Age1", "Age2","Age3"),
+    RMSE = c(gam_rmse_diastolic_ag1, gam_rmse_diastolic_ag2, gam_rmse_diastolic_ag3),
+    MAE = c(gam_mae_diastolic_ag1, gam_mae_diastolic_ag2, gam_mae_diastolic_ag3),
+    R2 = c(gam_r2_diastolic_ag1, gam_r2_diastolic_ag2, gam_r2_diastolic_ag3)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#F8766D', '#A3A500', '#E76BF3')
+
+# Set Y-axis ranges
+rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
+
+# Plot for RMSE
+Diastolic_rmse <- plot_ly(Diastolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+# Plot for MAE
+Diastolic_mae <- plot_ly(Diastolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+# Plot for R²
+Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+# Combine the three plots into a multi-panel figure
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 7.1: RMSE Comparison(Diastolic)[Left], Figure 7.2: MAE Comparison(Diastolic)[Middle], Figure 7.3: R² Comparison(Diastolic)[Right]", 
+                      font = list(size = 12)))
+
+# Display the figure
+DiastolicFig
+
+```
+
+## Partial effect plots - align with the model summary
+
+```{r}
+gam_model_1 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age1)
+gam_model_2 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age2)
+gam_model_3 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age3)
+
+gam_model_4 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age1)
+gam_model_5 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age2)
+gam_model_6 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age3)
+
+```
+
+
+```{r fig.width= 12, fig.height=14}
+# Set up the plotting area to have 3 rows and 2 columns (for FiberEnergy)
+par(mfrow = c(3, 2))  # 3 rows, 2 columns layout
+
+# Define color for FiberEnergy
+fiber_color <- "blue"
+
+# Plot for FiberEnergy (Systolic - Age1, Age2, Age3)
+plot(gam_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age1 Group - Systolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age2 Group - Systolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age3 Group - Systolic - FiberEnergy")  # FiberEnergy
+
+# Plot for FiberEnergy (Diastolic - Age1, Age2, Age3)
+plot(gam_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age1 Group - Diastolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age2 Group - Diastolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age3 Group - Diastolic - FiberEnergy")  # FiberEnergy
+
+# Reset the graphical parameters to default
+par(mfrow = c(1, 1))
+
+
+                                                                                                
+```
+
+
+```{r fig.width= 12, fig.height=14}
+# Set up the plotting area to have 3 rows and 2 columns (for CarbohydrateEnergy)
+par(mfrow = c(3, 2))  # 3 rows, 2 columns layout
+
+# Define color for CarbohydrateEnergy
+carb_color <- "red"
+
+# Plot for CarbohydrateEnergy (Systolic - Age1, Age2, Age3)
+plot(gam_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age1 Group - Systolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age2 Group - Systolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age3 Group - Systolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+
+# Plot for CarbohydrateEnergy (Diastolic - Age1, Age2, Age3)
+plot(gam_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age1 Group - Diastolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age2 Group - Diastolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age3 Group - Diastolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+
+# Reset the graphical parameters to default
+par(mfrow = c(1, 1))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
