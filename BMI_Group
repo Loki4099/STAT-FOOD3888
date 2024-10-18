@@ -1,0 +1,336 @@
+# Group by BMI
+```{r group by BMI}
+# Group by BMI categories
+normalized_data_light <- selected_data %>%
+  filter(BMI < 24.9)  # Group with BMI < 18.5
+
+normalized_data_normal <- selected_data %>%
+  filter(BMI >= 24.9 & BMI <= 29.9)  # Group with BMI between 18.5 and 24.9
+
+normalized_data_heavy <- selected_data %>%
+  filter(BMI > 29.9)  # Group with BMI > 24.9
+
+# For the group with BMI < 18.5
+numeric_data_light <- normalized_data_light %>% select_if(is.numeric)
+preprocess_params_light <- preProcess(numeric_data_light, method = c("center", "scale"))
+scaled_numeric_data_light <- predict(preprocess_params_light, numeric_data_light)
+normalized_data_light <- bind_cols(scaled_numeric_data_light, normalized_data_light %>% select_if(Negate(is.numeric)))
+
+# For the group with BMI between 18.5 and 24.9
+numeric_data_normal <- normalized_data_normal %>% select_if(is.numeric)
+preprocess_params_normal <- preProcess(numeric_data_normal, method = c("center", "scale"))
+scaled_numeric_data_normal <- predict(preprocess_params_normal, numeric_data_normal)
+normalized_data_normal <- bind_cols(scaled_numeric_data_normal, normalized_data_normal %>% select_if(Negate(is.numeric)))
+
+# For the group with BMI > 24.9
+numeric_data_heavy <- normalized_data_heavy %>% select_if(is.numeric)
+preprocess_params_heavy <- preProcess(numeric_data_heavy, method = c("center", "scale"))
+scaled_numeric_data_heavy <- predict(preprocess_params_heavy, numeric_data_heavy)
+normalized_data_heavy <- bind_cols(scaled_numeric_data_heavy, normalized_data_heavy %>% select_if(Negate(is.numeric)))
+```
+
+## For Systolic
+```{r}
+# Fit GAM models for each BMI group
+systolic_gam_model_light <- gam(Systolic ~ s(FiberEnergy) + s(CarbohydrateEnergy),
+                       data = normalized_data_light)
+
+systolic_gam_model_normal <- gam(Systolic ~ s(FiberEnergy) + s(CarbohydrateEnergy),
+                        data = normalized_data_normal)
+
+systolic_gam_model_heavy <- gam(Systolic ~ s(FiberEnergy) + s(CarbohydrateEnergy),
+                       data = normalized_data_heavy)
+```
+
+```{r}
+library(purrr)
+
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+# Function for cross-validation using GAM
+systolic_gam_cv <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Systolic
+      
+      gam_model <- gam(Systolic ~ s(FiberEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+
+# Apply cross-validation for each BMI group
+results_light <- run_gam_cv(normalized_data_light)
+results_normal <- run_gam_cv(normalized_data_normal)
+results_heavy <- run_gam_cv(normalized_data_heavy)
+
+# Extract RMSE, MAE, and R² for each group
+gam_rmse_systolic_light <- results_light$mean_rmse
+gam_mae_systolic_light <- results_light$mean_mae
+gam_r2_systolic_light <- results_light$mean_r2
+
+gam_rmse_systolic_normal <- results_normal$mean_rmse
+gam_mae_systolic_normal <- results_normal$mean_mae
+gam_r2_systolic_normal <- results_normal$mean_r2
+
+gam_rmse_systolic_heavy <- results_heavy$mean_rmse
+gam_mae_systolic_heavy <- results_heavy$mean_mae
+gam_r2_systolic_heavy <- results_heavy$mean_r2
+```
+
+```{r}
+# Create a data frame for the results
+Systolic_df <- data.frame(
+    Group = c("Light BMI", "Normal BMI", "Heavy BMI"),
+    RMSE = c(gam_rmse_systolic_light, gam_rmse_systolic_normal, gam_rmse_systolic_heavy),
+    MAE = c(gam_mae_systolic_light, gam_mae_systolic_normal, gam_mae_systolic_heavy),
+    R2 = c(gam_r2_systolic_light, gam_r2_systolic_normal, gam_r2_systolic_heavy)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#F8766D', '#A3A500', '#E76BF3')
+
+# Define y-axis ranges to improve the plot
+rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
+
+# Plot RMSE
+Systolic_rmse <- plot_ly(Systolic_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+# Plot MAE
+Systolic_mae <- plot_ly(Systolic_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+# Plot R²
+Systolic_r2 <- plot_ly(Systolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+# Combine the plots in a single layout
+SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure7.1: RMSE [Left], Figure 7.2: MAE [Middle], Figure 7.3: R² [Right]", 
+                      font = list(size = 12)))
+
+# Show the final plot
+SystolicFig
+```
+
+```{r fig.height=10}
+# Set up the plotting area to have 3 rows and 2 columns (for Light, Normal, and Heavy BMI groups)
+par(mfrow = c(3, 2))  # 3 rows, 2 columns layout
+
+# Define colors for FiberEnergy and CarbohydrateEnergy
+fiber_color <- "blue"
+carb_color <- "red"
+
+# Plot for Light BMI Group
+plot(systolic_gam_model_light, select = 1, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Light BMI Group - FiberEnergy")  # FiberEnergy
+plot(systolic_gam_model_light, select = 2, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Light BMI Group - CarbohydrateEnergy")  # CarbohydrateEnergy
+
+# Plot for Normal BMI Group
+plot(systolic_gam_model_normal, select = 1, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Normal BMI Group - FiberEnergy")
+plot(systolic_gam_model_normal, select = 2, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Normal BMI Group - CarbohydrateEnergy")
+
+# Plot for Heavy BMI Group
+plot(systolic_gam_model_heavy, select = 1, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Heavy BMI Group - FiberEnergy")
+plot(systolic_gam_model_heavy, select = 2, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Heavy BMI Group - CarbohydrateEnergy")
+
+# Reset the graphical parameters to default
+par(mfrow = c(1, 1))
+```
+## For Diastolic
+```{r}
+# Fit GAM models for each BMI group
+Diastolic_gam_model_light <- gam(Diastolic ~s(FiberEnergy) + s(CarbohydrateEnergy),data = normalized_data_light)
+
+Diastolic_gam_model_normal <- gam(Diastolic ~s(FiberEnergy) + s(CarbohydrateEnergy),
+                        data = normalized_data_normal)
+
+Diastolic_gam_model_heavy <- gam(Diastolic ~ s(FiberEnergy) + s(CarbohydrateEnergy),data = normalized_data_heavy)
+```
+
+```{r}
+library(purrr)
+
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+# Function for cross-validation using GAM for Diastolic
+diastolic_gam_cv <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Diastolic
+      
+      gam_model <- gam(Diastolic ~ s(FiberEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+
+# Apply cross-validation for each BMI group (for Diastolic)
+results_light_dias <- diastolic_gam_cv(normalized_data_light)
+results_normal_dias <- diastolic_gam_cv(normalized_data_normal)
+results_heavy_dias <- diastolic_gam_cv(normalized_data_heavy)
+
+# Extract RMSE, MAE, and R² for each group for Diastolic
+gam_rmse_diastolic_light <- results_light_dias$mean_rmse
+gam_mae_diastolic_light <- results_light_dias$mean_mae
+gam_r2_diastolic_light <- results_light_dias$mean_r2
+
+gam_rmse_diastolic_normal <- results_normal_dias$mean_rmse
+gam_mae_diastolic_normal <- results_normal_dias$mean_mae
+gam_r2_diastolic_normal <- results_normal_dias$mean_r2
+
+gam_rmse_diastolic_heavy <- results_heavy_dias$mean_rmse
+gam_mae_diastolic_heavy <- results_heavy_dias$mean_mae
+gam_r2_diastolic_heavy <- results_heavy_dias$mean_r2
+```
+
+```{r}
+# Create a data frame for the Diastolic results
+Diastolic_df <- data.frame(
+    Group = c("Light BMI", "Normal BMI", "Heavy BMI"),
+    RMSE = c(gam_rmse_diastolic_light, gam_rmse_diastolic_normal, gam_rmse_diastolic_heavy),
+    MAE = c(gam_mae_diastolic_light, gam_mae_diastolic_normal, gam_mae_diastolic_heavy),
+    R2 = c(gam_r2_diastolic_light, gam_r2_diastolic_normal, gam_r2_diastolic_heavy)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#F8766D', '#A3A500', '#E76BF3')
+
+# Define y-axis ranges to improve the plot
+rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
+
+# Plot RMSE
+Diastolic_rmse <- plot_ly(Diastolic_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+# Plot MAE
+Diastolic_mae <- plot_ly(Diastolic_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+# Plot R²
+Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+# Combine the plots in a single layout for Diastolic
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure8.1: RMSE [Left], Figure 8.2: MAE [Middle], Figure 8.3: R² [Right] (Diastolic)", 
+                      font = list(size = 12)))
+
+# Show the final plot
+DiastolicFig
+
+```
+
+```{r fig.height=10}
+# Set up the plotting area to have 3 rows and 2 columns (for Light, Normal, and Heavy BMI groups)
+par(mfrow = c(3, 2))  # 3 rows, 2 columns layout
+
+# Define colors for FiberEnergy and CarbohydrateEnergy
+fiber_color <- "blue"
+carb_color <- "red"
+
+# Plot for Light BMI Group
+plot(Diastolic_gam_model_light, select = 1, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Light BMI Group - FiberEnergy")  # FiberEnergy
+plot(Diastolic_gam_model_light, select = 2, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Light BMI Group - CarbohydrateEnergy")  # CarbohydrateEnergy
+
+# Plot for Normal BMI Group
+plot(Diastolic_gam_model_normal, select = 1, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Normal BMI Group - FiberEnergy")
+plot(Diastolic_gam_model_normal, select = 2, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Normal BMI Group - CarbohydrateEnergy")
+
+# Plot for Heavy BMI Group
+plot(Diastolic_gam_model_heavy, select = 1, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Heavy BMI Group - FiberEnergy")
+plot(Diastolic_gam_model_heavy, select = 2, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Heavy BMI Group - CarbohydrateEnergy")
+
+# Reset the graphical parameters to default
+par(mfrow = c(1, 1))
+```
