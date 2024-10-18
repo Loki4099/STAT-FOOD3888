@@ -248,6 +248,22 @@ selected_data <- selected_data %>%
 ```
 
 # Outliers and New Variables
+```{r,fig.height=6}
+numerical_vars <- selected_data %>%
+  select_if(is.numeric) 
+
+par(mfrow = c(3, 3))  
+for (var in names(numerical_vars)) {
+  boxplot(numerical_vars[[var]], 
+          main = var, 
+          ylab = var, 
+          col = "lightblue",        # Color for the box
+          border = "darkblue",      # Color for the border of the box
+          outcol = "red",           # Color for the outliers
+          pch = 19                  # Solid circle for outlier points
+  )
+}
+```
 
 ```{r variable creation and outliers}
 normal_ranges <- list(Systolic = c(90, 180), Diastolic = c(60, 120), BMI = c(16, 47.5), 
@@ -469,10 +485,50 @@ correlation_table_mic_kendall %>%
 
 ## Hypothesis testing
 
+```{r}
+median_fiber <- median(selected_data$FiberEnergy)
+selected_data$FiberGroup <- ifelse(selected_data$FiberEnergy > median_fiber, "High Fiber", "Low Fiber")
 
+median_carb <- median(selected_data$CarbohydrateEnergy)
+selected_data$CarboGroup <- ifelse(selected_data$CarbohydrateEnergy > median_carb, "High Carbo", "Low Carbo")
+```
 
+```{r Anova table(Table10)}
+fiber_systolic_anova <- aov(Systolic ~ FiberGroup, data = selected_data)
+fiber_diastolic_anova <- aov(Diastolic ~ FiberGroup, data = selected_data)
+carbo_systolic_anova <- aov(Systolic ~ CarboGroup, data = selected_data)
+carbo_diastolic_anova <- aov(Diastolic ~ CarboGroup, data = selected_data)
 
+anova_results <- data.frame(
+  Measure = c("Fiber vs Systolic", "Fiber vs Diastolic", 
+              "Carbohydrate vs Systolic", "Carbohydrate vs Diastolic"),
+  F_Statistic = c(summary(fiber_systolic_anova)[[1]][["F value"]][1],
+                  summary(fiber_diastolic_anova)[[1]][["F value"]][1],
+                  summary(carbo_systolic_anova)[[1]][["F value"]][1],
+                  summary(carbo_diastolic_anova)[[1]][["F value"]][1]),
+  P_Value = c(summary(fiber_systolic_anova)[[1]][["Pr(>F)"]][1],
+              summary(fiber_diastolic_anova)[[1]][["Pr(>F)"]][1],
+              summary(carbo_systolic_anova)[[1]][["Pr(>F)"]][1],
+              summary(carbo_diastolic_anova)[[1]][["Pr(>F)"]][1])
+)
 
+anova_results %>%
+  gt() %>%
+  tab_header(
+    title = "ANOVA Test Results: Nutrient Energy Intake vs Blood Pressure"
+  ) %>%
+  fmt_number(columns = c(F_Statistic, P_Value), decimals = 3) %>%
+  cols_label(
+    Measure = "Nutrient vs Blood Pressure",
+    F_Statistic = "F-Statistic",
+    P_Value = "P-Value"
+  ) %>%
+  tab_options(
+    table.font.size = "medium",
+    heading.align = "center"
+  )
+
+```
 
 
 
