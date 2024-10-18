@@ -387,7 +387,202 @@ par(mfrow = c(1, 1))
 
 
 
+## By Gender
+```{r gender group, warning = FALSE, message=FALSE}
+male <- selected_data %>% filter(Gender == 1) %>% select_if(is.numeric)
 
+female <- selected_data %>% filter(Gender == 2) %>% select_if(is.numeric)
+
+preprocess_params <- preProcess(male, method = c("center", "scale"))
+scaled_numeric_male <- predict(preprocess_params, male)
+normalized_male <- bind_cols(scaled_numeric_male, male %>% dplyr::select_if(Negate(is.numeric)))
+
+preprocess_params <- preProcess(female, method = c("center", "scale"))
+scaled_numeric_female <- predict(preprocess_params, female)
+normalized_female <- bind_cols(scaled_numeric_female, female %>% dplyr::select_if(Negate(is.numeric)))
+```
+
+
+### Systolic
+```{r gender systolic}
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+results_male <- sys_cv(normalized_male)
+results_female <- sys_cv(normalized_female)
+
+gam_rmse_diastolic_male <- results_male$mean_rmse
+gam_mae_diastolic_male <- results_male$mean_mae
+gam_r2_diastolic_male <- results_male$mean_r2
+
+gam_rmse_diastolic_female <- results_female$mean_rmse
+gam_mae_diastolic_female <- results_female$mean_mae
+gam_r2_diastolic_female <- results_female$mean_r2
+```
+
+```{r gender systolic comparison(Figure7)}
+Systolic_gender_df <- data.frame(
+    Model = c("Male", "Female"),
+    RMSE = c(gam_rmse_diastolic_male, gam_rmse_diastolic_female),
+    MAE = c(gam_mae_diastolic_male, gam_mae_diastolic_female),
+    R2 = c(gam_r2_diastolic_male, gam_r2_diastolic_female)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#F8766D', '#A3A500')
+
+rmse_range <- c(min(Systolic_gender_df$RMSE) * 0.95, max(Systolic_gender_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_gender_df$MAE) * 0.95, max(Systolic_gender_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_gender_df$R2) * 0.95, max(Systolic_gender_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+GenderSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 7.1: RMSE Comparison(Diastolic)[Left], Figure 7.2: MAE Comparison(Diastolic)[Middle], Figure 7.3: R² Comparison(Diastolic)[Right]"), 
+                      font = list(size = 12))
+
+GenderSystolicFig
+```
+
+### Diastolic
+```{r}
+library(purrr)
+
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+# Run cross-validation on the three datasets for Diastolic
+results_male <- diastolic_cv(normalized_male)
+results_female <- diastolic_cv(normalized_female)
+
+# Store results for Diastolic
+gam_rmse_diastolic_male <- results_male$mean_rmse
+gam_mae_diastolic_male <- results_male$mean_mae
+gam_r2_diastolic_male <- results_male$mean_r2
+
+gam_rmse_diastolic_female <- results_female$mean_rmse
+gam_mae_diastolic_female <- results_female$mean_mae
+gam_r2_diastolic_female <- results_female$mean_r2
+```
+
+
+```{r}
+# Create a data frame for Diastolic results
+Diastolic_gender_df <- data.frame(
+    Model = c("Male", "Female"),
+    RMSE = c(gam_rmse_diastolic_male, gam_rmse_diastolic_female),
+    MAE = c(gam_mae_diastolic_male, gam_mae_diastolic_female),
+    R2 = c(gam_r2_diastolic_male, gam_r2_diastolic_female)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#F8766D', '#A3A500')
+
+# Set Y-axis ranges
+rmse_range <- c(min(Diastolic_gender_df$RMSE) * 0.95, max(Diastolic_gender_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_gender_df$MAE) * 0.95, max(Diastolic_gender_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_gender_df$R2) * 0.95, max(Diastolic_gender_df$R2) * 1.05)
+
+# Plot for RMSE
+Diastolic_rmse <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+# Plot for MAE
+Diastolic_mae <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+# Plot for R²
+Diastolic_r2 <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+# Combine the three plots into a multi-panel figure
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 7.1: RMSE Comparison(Diastolic)[Left], Figure 7.2: MAE Comparison(Diastolic)[Middle], Figure 7.3: R² Comparison(Diastolic)[Right]", 
+                      font = list(size = 12)))
+
+# Display the figure
+DiastolicFig
+
+```
+
+### Partial effect plots - align with the model summary
+
+```{r}
+systolic_male <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_male)
+systolic_female <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_female)
+
+diastolic_male <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_male)
+diastolic_female <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_female)
+```
+
+#### FiberEnergy
+```{r, fig.width= 12, fig.height=8}
+par(mfrow = c(2, 2))
+
+fiber_color <- "blue"
+
+plot(systolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_male Group - Systolic - FiberEnergy")
+plot(diastolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "diastolic_male Group - Diastolic - FiberEnergy")
+plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_female Group - Systolic - FiberEnergy")
+plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "systolic_female Group - Diastolic - FiberEnergy")
+
+par(mfrow = c(1, 1))
+```
+
+#### CarbohydrateEnergy
+```{r, fig.width= 12, fig.height=8}
+par(mfrow = c(2, 2))
+carb_color <- "red"
+
+plot(systolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_male Group - Systolic - CarbohydrateEnergy")
+plot(diastolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "diastolic_male Group - Systolic - CarbohydrateEnergy")
+plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_female Group - Diastolic - CarbohydrateEnergy")
+plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "systolic_female Group - Diastolic - CarbohydrateEnergy")
+
+par(mfrow = c(1, 1))
+```
 
 
 
