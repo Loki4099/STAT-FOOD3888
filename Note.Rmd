@@ -104,3 +104,77 @@ AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, s
 
 AgeSystolicFig
 ```
+
+Systolic_gam <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Systolic
+      
+      gam_model <- gam(Systolic ~ s(FiberEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+
+Diastolic_gam <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Diastolic
+      
+      gam_model <- gam(Diastolic ~ s(FiberEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
