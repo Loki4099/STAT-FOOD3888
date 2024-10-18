@@ -1,0 +1,67 @@
+---
+title: "note2"
+author: "miaomiao Chen"
+date: "2024-10-18"
+output: html_document
+---
+
+
+```{r}
+gam_model_1 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age1)
+gam_model_2 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age2)
+gam_model_3 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age3)
+
+gam_model_4 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age1)
+gam_model_5 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age2)
+gam_model_6 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FiberEnergy), data = normalized_age3)
+
+```
+
+
+```{r fig.width= 12, fig.height=14}
+# Set up the plotting area to have 3 rows and 2 columns (for FiberEnergy)
+par(mfrow = c(3, 2))  # 3 rows, 2 columns layout
+
+# Define color for FiberEnergy
+fiber_color <- "blue"
+
+# Plot for FiberEnergy (Systolic - Age1, Age2, Age3)
+plot(gam_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age1 Group - Systolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age1 Group - Diastolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age2 Group - Systolic - FiberEnergy")  # FiberEnergy
+
+# Plot for FiberEnergy (Diastolic - Age1, Age2, Age3)
+plot(gam_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age2 Group - Diastolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age3 Group - Systolic - FiberEnergy")  # FiberEnergy
+plot(gam_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Age3 Group - Diastolic - FiberEnergy")  # FiberEnergy
+
+# Reset the graphical parameters to default
+par(mfrow = c(1, 1))
+
+
+                                                                                                
+```
+
+
+```{r fig.width= 12, fig.height=14}
+# Set up the plotting area to have 3 rows and 2 columns (for CarbohydrateEnergy)
+par(mfrow = c(3, 2))  # 3 rows, 2 columns layout
+
+# Define color for CarbohydrateEnergy
+carb_color <- "red"
+
+# Plot for CarbohydrateEnergy (Systolic - Age1, Age2, Age3)
+plot(gam_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age1 Group - Systolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age1 Group - Diastolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age2 Group - Systolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+
+# Plot for CarbohydrateEnergy (Diastolic - Age1, Age2, Age3)
+plot(gam_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age2 Group - Diastolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age3 Group - Systolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+plot(gam_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Age3 Group - Diastolic - CarbohydrateEnergy")  # CarbohydrateEnergy
+
+# Reset the graphical parameters to default
+par(mfrow = c(1, 1))
+
+
+```
