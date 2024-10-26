@@ -355,7 +355,7 @@ get_age <- function(data) {
 }
 
 get_health_metrics <- function(data) {
-  format_mean_sd_list(data, c("BMI", "Systolic", "Diastolic", "AlcoholPercentage", "PotassiumSodiumRatio", "FiberEnergy", "CarbonhydrateEnergy"))
+  format_mean_sd_list(data, c("BMI", "Systolic", "Diastolic", "AlcoholPercentage", "SodiumPotassiumRatio", "FibreEnergy", "CarbohydrateEnergy"))
 }
 
 riskdata <- selected_data %>% filter(Hypertension == 1)
@@ -371,8 +371,8 @@ df <- data.frame(
     "BMI, kg/m² , mean(SD)", 
     "Systolic, mmHg, mean(SD)", "Diastolic, mmHg, mean(SD)", 
     "Alcohol Percentage, mean(SD)", 
-    "Potassium Sodium Ratio, mean(SD)", 
-    "Fiber Energy, mean(SD)", 
+    "Sodium Potassium Ratio, mean(SD)", 
+    "Fibre Energy, mean(SD)", 
     "Carbohydrate Energy, mean(SD)"
   ),
   Group = c(
@@ -1904,7 +1904,7 @@ par(mfrow = c(1, 1))
 ```
 
 #### CarbohydrateEnergy
-```{r gender carbonhydrateenergy(Figure23), fig.width= 12, fig.height=8}
+```{r gender carbohydrateenergy(Figure23), fig.width= 12, fig.height=8}
 par(mfrow = c(2, 2))
 carb_color <- "red"
 
