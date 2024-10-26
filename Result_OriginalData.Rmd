@@ -1,0 +1,1897 @@
+---
+title: "Result_OriginalData"
+author: "group2"
+date: "2024-10-17"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+---
+# Library
+
+```{r library, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(here)      
+library(readxl)    
+library(janitor)   
+library(stringr)   
+library(tidyr)     
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(factoextra)
+library(gt)
+library(naniar)
+library(ggcorrplot)
+library(corrplot)
+library(GGally)
+library(randomForest)
+library(e1071)  
+library(caret)
+library(plotly)
+library(stargazer)
+library(broom)
+library(kableExtra)
+library(gridExtra)
+library(patchwork)
+library(minerva)
+library(mgcv)
+library(MASS)
+library(glmnet)
+library(purrr)
+library(htmltools)
+library(insight)
+```
+
+# Data Import
+
+```{r data import}
+raw_bp <- read.csv(here("ZIPallFiles","AHSnpa11bp.csv"), header=TRUE)
+raw_bb <- read.csv(here("ZIPallFiles","AHSnpa11bb.csv"), header=TRUE)
+raw_bsp <- read.csv(here("ZIPallFiles","inp13bsp.csv"), header=TRUE)
+raw_bcn <- read.csv(here("ZIPallFiles","inp13bcn.csv"), header=TRUE)
+raw_bhh <- read.csv(here("ZIPallFiles","inp13bhh.csv"), header=TRUE)
+```
+
+# Rename and Created
+
+```{r rename+Identity}
+bp_bb <- inner_join(raw_bp, raw_bb, by = "ABSPID") %>%
+  rename(HypertensionStatus = HYPBC,
+         BodyMass = SABDYMS,
+         SocialStatus = SF2SA1QN,
+         PersonID = ABSPID,
+         Age = AGEC,
+         Gender = SEX,
+         BMI = BMISC,
+         Systolic = SYSTOL,
+         Diastolic = DIASTOL,
+         SmokeStatus = SMKSTAT,
+         AlcoholPercentage_Day1 = ALCPER1,
+         AlcoholPercentage_Day2 = ALCPER2,
+         Potassium_Day1 = POTAST1,
+         Potassium_Day2 = POTAST2,
+         Sodium_Day1 = SODIUMT1,
+         Sodium_Day2 = SODIUMT2,
+         FibreEnergy_Day1 = FIBRPER1,
+         FibreEnergy_Day2 = FIBRPER2,
+         CarbohydrateEnergy_Day1 = CHOPER1,
+         CarbohydrateEnergy_Day2 = CHOPER2,
+         EnergyBMR_Day1 = EIBMR1,
+         EnergyBMR_Day2 = EIBMR2) %>%
+   mutate(Identity = factor(0))
+
+bsp_bhh<- left_join(raw_bsp, raw_bhh,by = c("ABSHID")) %>%
+  rename(BodyMass = SABDYMS,
+         SocialStatus = SF2SA1DB,
+         HouseID = ABSHID,
+         Age = AGEEC,
+         Gender = SEX,
+         BMI = BMISC,
+         Systolic = SYSTOL,
+         Diastolic = DIASTOL,
+         SmokeStatus = SMKSTAT,
+         AlcoholPercentage_Day1 = ALCPER1,
+         AlcoholPercentage_Day2 = ALCPER2,
+         Potassium_Day1 = POTAST1,
+         Potassium_Day2 = POTAST2,
+         Sodium_Day1 = SODIUMT1,
+         Sodium_Day2 = SODIUMT2,
+         FibreEnergy_Day1 = FIBRPER1,
+         FibreEnergy_Day2 = FIBRPER2,
+         CarbohydrateEnergy_Day1 = CHOPER1,
+         CarbohydrateEnergy_Day2 = CHOPER2,
+         EnergyBMR_Day1 = EIBMR1,
+         EnergyBMR_Day2 = EIBMR2)%>%
+   mutate(Identity = factor(1))
+
+bcn <- raw_bcn %>%
+  rename(HouseID = ABSHID,
+         MedicalCondition = ICD10ME)
+```
+
+# First Filter
+
+```{r filter 1}
+bp_bb <- bp_bb %>%
+  mutate(EnergyBMR_Day1 = na_if(EnergyBMR_Day1, 997) %>% na_if(998),
+         EnergyBMR_Day2 = na_if(EnergyBMR_Day2, 997) %>% na_if(998),
+         EnergyBMR = (EnergyBMR_Day1 + EnergyBMR_Day2)/2) %>%
+  filter(
+    Age >= 18, 
+    HypertensionStatus == 5,
+    BodyMass != 4,
+    (is.na(EnergyBMR) | EnergyBMR >= 0.9))
+
+bsp_bhh <- bsp_bhh %>% 
+  mutate(EnergyBMR_Day1 = na_if(EnergyBMR_Day1, 997) %>% na_if(998),
+         EnergyBMR_Day2 = na_if(EnergyBMR_Day2, 997) %>% na_if(998),
+         EnergyBMR = (EnergyBMR_Day1 + EnergyBMR_Day2)/2) %>%
+  filter(
+    Age >= 18, 
+    BodyMass != 4,
+    !HouseID %in% bcn$HouseID[bcn$MedicalCondition %in% c(7, 20)],
+    (is.na(EnergyBMR) | EnergyBMR >= 0.9))
+```
+
+# Merge
+
+```{r merge}
+raw_data <- bind_rows(bp_bb,bsp_bhh)
+```
+
+# Variable Selection
+
+```{r variable selection}
+selected_data <- raw_data %>%
+  dplyr::select(PersonID, HouseID, SocialStatus, Age, Gender, BMI, Systolic, Diastolic, SmokeStatus, Identity,
+         AlcoholPercentage_Day1, AlcoholPercentage_Day2,
+         Potassium_Day1, Potassium_Day2, Sodium_Day1, Sodium_Day2,
+         FibreEnergy_Day1, FibreEnergy_Day2, 
+         CarbohydrateEnergy_Day1, CarbohydrateEnergy_Day2)
+```
+
+# Type Check 1
+
+```{r variable check before(Table1)}
+data.frame(Variable = names(selected_data), Type = sapply(selected_data, class)) %>%
+  gt() %>%
+  tab_header(
+    title = "Variable Names and Their Types"
+  ) %>%
+ tab_caption(caption = md("Table 1: Variable types table"))
+```
+
+# Na values + New Variables + Type Conversion
+
+```{r navalue_new_typeconversion}
+selected_data <- selected_data %>%
+  mutate(
+    across(c(Gender, SocialStatus, SmokeStatus), as.factor),
+    BMI = na_if(BMI, 98) %>% na_if(99),
+    Systolic = na_if(Systolic, 0) %>% na_if(998) %>% na_if(999),
+    Diastolic = na_if(Diastolic, 0) %>% na_if(998) %>% na_if(999),
+    Potassium = (Potassium_Day1 + Potassium_Day2) / 2, 
+    Sodium = (Sodium_Day1 + Sodium_Day2) / 2,
+    FibreEnergy = (FibreEnergy_Day1 + FibreEnergy_Day2)/2,
+    CarbohydrateEnergy = (CarbohydrateEnergy_Day1 + CarbohydrateEnergy_Day2) / 2,
+    AlcoholPercentage = (AlcoholPercentage_Day1 + AlcoholPercentage_Day2) /2,
+    SodiumPotassiumRatio = Sodium / Potassium
+    ) %>% 
+  dplyr::select(PersonID,HouseID, SocialStatus, Age, Gender, BMI, Systolic, Diastolic, SmokeStatus, AlcoholPercentage, SodiumPotassiumRatio, FibreEnergy, CarbohydrateEnergy, Identity)
+```
+
+# Type Check 2
+
+```{r variable check after(Table2)}
+data.frame(Variable = names(selected_data), Type = sapply(selected_data, class)) %>%
+  gt() %>%
+  tab_header(
+    title = "Variable Names and Their Types"
+  ) %>%
+ tab_caption(caption = md("Table 2: Variable types table after correction"))
+```
+
+# Duplicate Values
+
+```{r duplicate values(Table3)}
+selected_data %>% 
+  dplyr::select(-PersonID) %>% 
+  distinct() %>% 
+  dim() %>% 
+  tibble::tibble(Dimension = c("Rows", "Columns"), Count = .) %>% 
+  gt() %>%
+  tab_header(title = "Dimensions of Unique Tibble") %>%
+  tab_caption(caption = md("Table 3: Dimensions of Unique Data Table"))
+```
+
+# Categrocial Distribution
+
+```{r categrocial distribution bar plot(Figure1), warning=FALSE}
+plot_categorical_distribution <- function(data) {
+  categorical_vars <- data %>%
+    dplyr::select(where(is.factor) | where(is.character)) %>%
+    dplyr::select(-PersonID, -HouseID)
+  figure_counter <- 1
+  for (var in names(categorical_vars)) {
+    non_na_data <- data %>%
+      filter(!is.na(.data[[var]]))
+    if (nrow(non_na_data) == 0) next
+    
+    figure_title <- paste("Figure 3.", figure_counter, ": Proportion of Categories in", var, sep = "")
+    
+    p <- ggplot(non_na_data, aes(x = .data[[var]])) +       
+      geom_bar(aes(y = (..count..) / sum(..count..), fill = .data[[var]]), color = "black") +       
+      scale_fill_brewer(palette = "Set3") +        
+      labs(title = figure_title, x = "Category", y = "Proportion") +       
+      theme_minimal() +       
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    print(p)
+    figure_counter <- figure_counter + 1
+    }
+  }
+
+plot_categorical_distribution(selected_data) 
+```
+
+# Merge Variable
+
+```{r merge variable}
+selected_data <- selected_data %>% 
+  mutate(SmokeStatus = recode_factor(SmokeStatus, "2" = "1", "3" = "1","4" = "2","5" = "3"))
+```
+
+# Outliers and New Variables
+
+```{r variable creation and outliers}
+normal_ranges <- list(Systolic = c(90, 180), Diastolic = c(60, 120), BMI = c(16, 47.5), 
+                      SodiumPotassiumRatio = c(0, 4), AlcoholPercentage = c(0, 85), 
+                      CarbohydrateEnergy = c(0, 100), FibreEnergy = c(0, 100))
+
+selected_data <- selected_data %>%
+  filter(
+    (is.na(Systolic) | (Systolic >= normal_ranges$Systolic[1] & Systolic <= normal_ranges$Systolic[2])),
+    (is.na(Diastolic) | (Diastolic >= normal_ranges$Diastolic[1] & Diastolic <= normal_ranges$Diastolic[2])),
+    (is.na(BMI) | (BMI >= normal_ranges$BMI[1] & BMI <= normal_ranges$BMI[2])),
+    (is.na(AlcoholPercentage) | (AlcoholPercentage >= normal_ranges$AlcoholPercentage[1] & AlcoholPercentage <= normal_ranges$AlcoholPercentage[2])),
+    (is.na(CarbohydrateEnergy) | (CarbohydrateEnergy >= normal_ranges$CarbohydrateEnergy[1] & CarbohydrateEnergy <= normal_ranges$CarbohydrateEnergy[2])),
+    (is.na(FibreEnergy) | (FibreEnergy >= normal_ranges$FibreEnergy[1] & FibreEnergy <= normal_ranges$FibreEnergy[2])),
+    (is.na(SodiumPotassiumRatio) | (SodiumPotassiumRatio >= normal_ranges$SodiumPotassiumRatio[1] & SodiumPotassiumRatio <= normal_ranges$SodiumPotassiumRatio[2]))
+  ) %>%
+  mutate(Hypertension = as.factor(case_when(Systolic >= 120 | Diastolic >= 80 ~ 1,TRUE ~ 0)))
+```
+
+# Variable check
+```{r variable descriptions(Table4)}
+variable_data <- data.frame(
+  Variable = c("PersonID", "HouseID", "SocialStatus", "Age", "Gender", "BMI", 
+               "Systolic", "Diastolic", "SmokeStatus", "AlcoholPercentage", 
+               "SodiumPotassiumRatio", "FibreEnergy", "CarbohydrateEnergy", 
+               "Identity"),
+  Description = c("Selected person identifier", "Household identifier",
+                  "ICD10 Conditions - Mini classification",
+                  "Age of person", "Sex of person",
+                  "Body Mass Index (BMI) - score measured",
+                  "Systolic Blood Pressure (mmHg)",
+                  "Diastolic Blood Pressure (mmHg)", "Smoking Status",
+                  "Average of Percentage of energy from alcohol (Day1) and Percentage of energy from alcohol (Day2)",
+                  "The ratio of the average of Sodium (supplement) Day 1 mg and Sodium (supplement) Day 2 mg over the average of Potassium (total) Day 1 mg and Potassium (total) Day 2 mg",
+                  "Average of Percentage of energy from fibre (Day1) and Percentage of energy from fibre (Day2)",
+                  "Average of Percentage of energy from carbohydrate (Day1) and Percentage of energy from carbohydrate (Day2)",
+                  "Indicates whether the individual is part of the indigenous population"))
+
+variable_table <- variable_data %>%
+  gt() %>%
+  tab_header(title = "All related variables") %>%
+  cols_label(Variable = "Variable",Description = "Description") %>%
+  tab_caption(caption = md("**Table 4:** Variable Descriptions"))%>%
+  fmt_markdown(columns = everything()) %>%
+  tab_options(table.width = pct(100))
+
+variable_table
+```
+
+```{r predictor(Table5)}
+selected_predictors <- selected_data %>%
+  dplyr::select(FibreEnergy, CarbohydrateEnergy)
+
+predictor_table <- data.frame(Variable = names(selected_predictors), Type = sapply(selected_predictors, class)) %>%
+  gt() %>%
+  tab_header(title = "Variable Names and Their Types") %>%
+  tab_caption(caption = md("**Table 5**: Predictor variables and their data types"))
+
+predictor_table
+```
+
+```{r confounding(Table6)}
+confounding_vars <- selected_data %>%
+  dplyr::select(-FibreEnergy, -CarbohydrateEnergy,-PersonID, -HouseID)
+
+confounding_table <- data.frame(Variable = names(confounding_vars), Type = sapply(confounding_vars, class)) %>%
+  gt() %>%
+  tab_header(title = "Confounding Variables and Their Types") %>%
+  tab_caption(caption = md("**Table 6**: Confounding variables and their data types"))
+
+confounding_table
+```
+
+```{r demographic and health characteristics by hypertension status(Table 7), warning=FALSE}
+format_counts <- function(count, total) {
+  paste(count, "(", round(count / total * 100, 1), "%)", sep = "")
+}
+
+format_counts_list <- function(values, data, column) {
+  sapply(values, function(x) format_counts(sum(data[[column]] == x), nrow(data)))
+}
+
+format_mean_sd <- function(mean_val, sd_val) {
+  paste(round(mean_val, 2), "(", round(sd_val, 2), ")", sep = "")
+}
+
+format_mean_sd_list <- function(data, columns) {
+  sapply(columns, function(col) format_mean_sd(mean(data[[col]], na.rm = TRUE), sd(data[[col]], na.rm = TRUE)))
+}
+
+get_social_status <- function(data) {
+  format_counts_list(1:5, data, "SocialStatus")
+}
+
+get_gender <- function(data) {
+  format_counts_list(1:2, data, "Gender")
+}
+
+get_smoke_status <- function(data) {
+  format_counts_list(1:3, data, "SmokeStatus")
+}
+
+get_identity <- function(data) {
+  format_counts_list(0:1, data, "Identity")
+}
+
+get_age <- function(data) {
+  c(
+    format_counts(sum(data$Age >= 18 & data$Age <= 49), nrow(data)),
+    format_counts(sum(data$Age > 50), nrow(data))
+  )
+}
+
+get_health_metrics <- function(data) {
+  format_mean_sd_list(data, c("BMI", "Systolic", "Diastolic", "AlcoholPercentage", "PotassiumSodiumRatio", "FiberEnergy", "CarbonhydrateEnergy"))
+}
+
+riskdata <- selected_data %>% filter(Hypertension == 1)
+noriskdata <- selected_data %>% filter(Hypertension == 0)
+
+df <- data.frame(
+  Variable = c(
+    "Lowest 20%, N(%)", "Second quintile, N(%)", "Third quintile, N(%)", "Fourth quintile, N(%)", "Highest 20%*, N(%)",
+    "Male, N(%)", "Female, N(%)",
+    "Currently Smoker, N(%)", "Ex-Smoker, N(%)", "Never smoked, N(%)",
+    "Non Indigenous, N(%)", "Indigenous, N(%)",
+    "18-49, N(%)", ">50, N(%)",
+    "BMI, kg/m² , mean(SD)", 
+    "Systolic, mmHg, mean(SD)", "Diastolic, mmHg, mean(SD)", 
+    "Alcohol Percentage, mean(SD)", 
+    "Potassium Sodium Ratio, mean(SD)", 
+    "Fiber Energy, mean(SD)", 
+    "Carbohydrate Energy, mean(SD)"
+  ),
+  Group = c(
+    "SocialStatus", "SocialStatus", "SocialStatus", "SocialStatus", "SocialStatus",
+    "Gender", "Gender",
+    "SmokeStatus", "SmokeStatus", "SmokeStatus",
+    "Identity", "Identity",
+    "Age", "Age",
+    NA, NA, NA, NA, NA, NA, NA
+  ),
+  Total = c(
+    get_social_status(selected_data),
+    get_gender(selected_data),
+    get_smoke_status(selected_data),
+    get_identity(selected_data),
+    get_age(selected_data),
+    get_health_metrics(selected_data)
+  ),
+  HypertensionRisk = c(
+    get_social_status(riskdata),
+    get_gender(riskdata),
+    get_smoke_status(riskdata),
+    get_identity(riskdata),
+    get_age(riskdata),
+    get_health_metrics(riskdata)
+  ),
+  NoHypertensionRisk = c(
+    get_social_status(noriskdata),
+    get_gender(noriskdata),
+    get_smoke_status(noriskdata),
+    get_identity(noriskdata),
+    get_age(noriskdata),
+    get_health_metrics(noriskdata)
+  )
+)
+
+total_count <- nrow(selected_data)
+risk_count <- nrow(riskdata)
+no_risk_count <- nrow(noriskdata)
+
+df %>%
+  format_table(ci_brackets = c("(", ")")) %>%
+  export_table(format = "html", title = "Table 7: Demographic and Health Characteristics by Hypertension Status")
+```
+
+# Missing Values
+
+```{r missing value(Table8), warning = FALSE}
+selected_data %>% 
+  dplyr::select(-PersonID, -HouseID) %>% 
+  miss_var_summary() %>% 
+  gt() %>%
+  tab_header(title = "Missing Value") %>%
+  tab_caption(caption = md("Table 8: Missing Values in Selected Data")) %>%
+  cols_label(variable = "Variable Name", n_miss = "Missing Count", pct_miss = "Percentage Missing") %>%
+  fmt_number(columns = everything(), decimals = 2)
+```
+
+```{r heat map(Figure2)}
+corr_matrix <- selected_data%>%
+  dplyr::select(where(is.numeric)) %>%
+  mutate(across(everything(), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .))) %>%
+  cor(use = "complete.obs")
+
+ggcorrplot(corr_matrix, lab = TRUE, 
+           title = "Figure 2: Correlation Heatmap for ALL", 
+           colors = c("blue", "white", "red"),
+           tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
+```
+
+# Regression Imputation
+
+```{r regression imputation(Figure3), fig.height = 5, fig.width= 11}
+selected_data$BMI[is.na(selected_data$BMI)] <- lm(BMI ~ Gender + SocialStatus + Age + SodiumPotassiumRatio + FibreEnergy + CarbohydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% predict(newdata = selected_data[is.na(selected_data$BMI), ])
+
+selected_data$Systolic[is.na(selected_data$Systolic)] <- lm(Systolic ~ Gender + SocialStatus + Age + BMI + SodiumPotassiumRatio + FibreEnergy + CarbohydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% predict(newdata = selected_data[is.na(selected_data$Systolic), ])
+
+selected_data$Diastolic[is.na(selected_data$Diastolic)] <- lm(Diastolic ~ Gender + SocialStatus + Age + BMI + Systolic + SodiumPotassiumRatio + FibreEnergy + CarbohydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% predict(newdata = selected_data[is.na(selected_data$Diastolic), ])
+
+vis_miss(selected_data %>% dplyr::select(-PersonID, -HouseID)) +
+  ggtitle("Figure 3: Missing Data Visualization of Selected Variables")
+```
+
+# Normalization
+
+```{r normalization}
+numeric_data <- selected_data %>% dplyr::select_if(is.numeric)
+preprocess_params <- preProcess(numeric_data, method = c("center", "scale"))
+scaled_numeric_data <- predict(preprocess_params, numeric_data)
+normalized_data <- bind_cols(scaled_numeric_data, selected_data %>% dplyr::select_if(Negate(is.numeric)))
+```
+
+# Multicollinearity
+
+```{r multicollinearity matrix plot(Figure4), fig.height=10, fig.width=10}
+selected_data %>%
+  dplyr::select(where(is.numeric), -Systolic, -Diastolic) %>%
+  ggscatmat() +
+  ggtitle("Figure 4: Scatterplot Matrix of Selected Numeric Variables")
+```
+
+
+# Correlation
+
+## Scatter plot
+
+```{r scatter plot(Figure 5), warning=FALSE, message = FALSE, fig.width = 15}
+fiber_syst_plot <- ggplot(selected_data, aes(x = FibreEnergy, y = Systolic)) +
+  geom_point(color = "#FF7F0E", alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#1F77B4", size = 1.5) +
+  labs(title = "Figure 5.1: Fiber Energy vs Systolic", x = "Percentage of Energy from Fiber", y = "Systolic(mmHg)") +
+  theme_light(base_size = 15) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+fiber_dias_plot <- ggplot(selected_data, aes(x = FibreEnergy, y = Diastolic)) +
+  geom_point(color = "#FF7F0E", alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#1F77B4", size = 1.5) +
+  labs(title = "Figure 5.2: Fiber Energy vs Diastolic", x = "Percentage of Energy from Fiber", y = "Diastolic(mmHg)") +
+  theme_light(base_size = 15) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+carbo_syst_plot <- ggplot(selected_data, aes(x = CarbohydrateEnergy, y = Systolic)) +
+  geom_point(color = "#2CA02C", alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#D62728", size = 1.5) +
+  labs(title = "Figure 5.3: Carbohydrate Energy vs Systolic", x = "Percentage of Energy from Carbohydrate", y = "Systolic(mmHg)") +
+  theme_light(base_size = 15) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+carbo_dias_plot <- ggplot(selected_data, aes(x = CarbohydrateEnergy, y = Diastolic)) +
+  geom_point(color = "#2CA02C", alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "#D62728", size = 1.5) +
+  labs(title = "Figure 5.4: Carbohydrate Energy vs Diastolic", x = "Percentage of Energy from Carbohydrate", y = "Diastolic(mmHg)") +
+  theme_light(base_size = 15) +
+  theme(plot.title = element_text(hjust = 0.5))
+
+grid.arrange(fiber_syst_plot, fiber_dias_plot, carbo_syst_plot, carbo_dias_plot, nrow = 2)
+```
+
+## Linear correlation table
+
+```{r linar correlation table(Table9)}
+fiber_syst_pearson <- cor(selected_data$FibreEnergy, selected_data$Systolic, method = "pearson")
+fiber_syst_spearman <- cor(selected_data$FibreEnergy, selected_data$Systolic, method = "spearman")
+fiber_dias_pearson <- cor(selected_data$FibreEnergy, selected_data$Diastolic, method = "pearson")
+fiber_dias_spearman <- cor(selected_data$FibreEnergy, selected_data$Diastolic, method = "spearman")
+
+carbo_syst_pearson <- cor(selected_data$CarbohydrateEnergy, selected_data$Systolic, method = "pearson")
+carbo_syst_spearman <- cor(selected_data$CarbohydrateEnergy, selected_data$Systolic, method = "spearman")
+carbo_dias_pearson <- cor(selected_data$CarbohydrateEnergy, selected_data$Diastolic, method = "pearson")
+carbo_dias_spearman <- cor(selected_data$CarbohydrateEnergy, selected_data$Diastolic, method = "spearman")
+
+correlation_table <- data.frame(
+  Measure = c("FibreEnergy vs Systolic", "FibreEnergy vs Diastolic",
+              "CarbohydrateEnergy vs Systolic", "CarbohydrateEnergy vs Diastolic"),
+  Pearson_Correlation = c(fiber_syst_pearson, fiber_dias_pearson, carbo_syst_pearson, carbo_dias_pearson),
+  Spearman_Correlation = c(fiber_syst_spearman, fiber_dias_spearman, carbo_syst_spearman, carbo_dias_spearman))
+
+correlation_table %>%
+  gt() %>%
+  tab_header(
+    title = "Table 9: Correlation Between Nutrient Energy Intake and Blood Pressure",
+    subtitle = "Correlation values for both Systolic and Diastolic Blood Pressure") %>%
+  fmt_number(columns = c(Pearson_Correlation, Spearman_Correlation), decimals = 2)
+```
+
+## Non-linear correlation table
+
+```{r non-linear correlation table(Table10)}
+fiber_syst_kendall <- cor(selected_data$FibreEnergy, selected_data$Systolic, method = "kendall")
+fiber_syst_mic <- mine(selected_data$FibreEnergy, selected_data$Systolic)$MIC
+fiber_dias_kendall <- cor(selected_data$FibreEnergy, selected_data$Diastolic, method = "kendall")
+fiber_dias_mic <- mine(selected_data$FibreEnergy, selected_data$Diastolic)$MIC
+carbo_syst_kendall <- cor(selected_data$CarbohydrateEnergy, selected_data$Systolic, method = "kendall")
+carbo_syst_mic <- mine(selected_data$CarbohydrateEnergy, selected_data$Systolic)$MIC
+carbo_dias_kendall <- cor(selected_data$CarbohydrateEnergy, selected_data$Diastolic, method = "kendall")
+carbo_dias_mic <- mine(selected_data$CarbohydrateEnergy, selected_data$Diastolic)$MIC
+
+correlation_table_mic_kendall <- data.frame(
+  Measure = c("FibreEnergy vs Systolic", "FibreEnergy vs Diastolic",
+              "CarbohydrateEnergy vs Systolic", "CarbohydrateEnergy vs Diastolic"),
+  Kendall_Correlation = c(fiber_syst_kendall, fiber_dias_kendall, carbo_syst_kendall, carbo_dias_kendall),
+  MIC_Correlation = c(fiber_syst_mic, fiber_dias_mic, carbo_syst_mic, carbo_dias_mic))
+
+correlation_table_mic_kendall %>%
+  gt() %>%
+  tab_header(
+    title = "Table 10: Kendall's Tau and MIC Correlation between Nutrient Energy Intake and Blood Pressure") %>%
+  fmt_number(columns = c(Kendall_Correlation, MIC_Correlation), decimals = 3)
+```
+
+## Hypothesis testing
+
+```{r}
+median_fiber <- median(selected_data$FibreEnergy)
+selected_data$FiberGroup <- ifelse(selected_data$FibreEnergy > median_fiber, "High Fiber", "Low Fiber")
+
+median_carb <- median(selected_data$CarbohydrateEnergy)
+selected_data$CarboGroup <- ifelse(selected_data$CarbohydrateEnergy > median_carb, "High Carbo", "Low Carbo")
+```
+
+```{r Anova table(Table11)}
+fiber_systolic_anova <- aov(Systolic ~ FiberGroup, data = selected_data)
+fiber_diastolic_anova <- aov(Diastolic ~ FiberGroup, data = selected_data)
+carbo_systolic_anova <- aov(Systolic ~ CarboGroup, data = selected_data)
+carbo_diastolic_anova <- aov(Diastolic ~ CarboGroup, data = selected_data)
+
+anova_results <- data.frame(
+  Measure = c("Fiber vs Systolic", "Fiber vs Diastolic", 
+              "Carbohydrate vs Systolic", "Carbohydrate vs Diastolic"),
+  F_Statistic = c(summary(fiber_systolic_anova)[[1]][["F value"]][1],
+                  summary(fiber_diastolic_anova)[[1]][["F value"]][1],
+                  summary(carbo_systolic_anova)[[1]][["F value"]][1],
+                  summary(carbo_diastolic_anova)[[1]][["F value"]][1]),
+  P_Value = c(summary(fiber_systolic_anova)[[1]][["Pr(>F)"]][1],
+              summary(fiber_diastolic_anova)[[1]][["Pr(>F)"]][1],
+              summary(carbo_systolic_anova)[[1]][["Pr(>F)"]][1],
+              summary(carbo_diastolic_anova)[[1]][["Pr(>F)"]][1])
+)
+
+anova_results %>%
+  gt() %>%
+  tab_header(
+    title = "Table 11: ANOVA Test Results: Nutrient Energy Intake vs Blood Pressure"
+  ) %>%
+  fmt_number(columns = c(F_Statistic, P_Value), decimals = 3) %>%
+  cols_label(
+    Measure = "Nutrient vs Blood Pressure",
+    F_Statistic = "F-Statistic",
+    P_Value = "P-Value"
+  ) %>%
+  tab_options(
+    table.font.size = "medium",
+    heading.align = "center"
+  )
+```
+
+# Model comparison
+
+## Systolic
+```{r model comparision metric[Systolic]}
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+gam_rmse_systolic <- numeric()
+gam_mae_systolic <- numeric()
+gam_r2_systolic <- numeric()
+
+mlr_rmse_systolic <- numeric()
+mlr_mae_systolic <- numeric()
+mlr_r2_systolic <- numeric()
+
+robust_rmse_systolic <- numeric()
+robust_mae_systolic <- numeric()
+robust_r2_systolic <- numeric()
+
+n <- nrow(normalized_data)
+
+for (r in 1:repeats) {
+  folds <- sample(rep(1:k, length.out = n))
+  
+  for (i in 1:k) {
+    train_idx <- which(folds != i)
+    test_idx <- which(folds == i)
+    
+    data_train <- normalized_data[train_idx, ]
+    data_test <- normalized_data[test_idx, ]
+    
+    actual <- data_test$Systolic
+    #GAM
+    gam_model <- gam(Systolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
+                       s(AlcoholPercentage) + s(FibreEnergy) + s(CarbohydrateEnergy) + 
+                       Identity + s(SodiumPotassiumRatio),
+                     data = data_train)
+    
+    gam_predictions <- predict(gam_model, newdata = data_test)
+    
+    gam_rmse <- sqrt(mean((gam_predictions - actual)^2))
+    gam_mae <- mean(abs(gam_predictions - actual))
+    gam_r2 <- cor(gam_predictions, actual)^2
+    
+    gam_rmse_systolic <- c(gam_rmse_systolic, gam_rmse)
+    gam_mae_systolic <- c(gam_mae_systolic, gam_mae)
+    gam_r2_systolic <- c(gam_r2_systolic, gam_r2)
+    #Multiple Linear Regression
+    mlr_model <- lm(Systolic ~ Age + BMI + SocialStatus + Gender + SmokeStatus +
+                      AlcoholPercentage + FibreEnergy + CarbohydrateEnergy + 
+                      Identity + SodiumPotassiumRatio, data = data_train)
+    
+    mlr_predictions <- predict(mlr_model, newdata = data_test)
+    
+    mlr_rmse <- sqrt(mean((mlr_predictions - actual)^2))
+    mlr_mae <- mean(abs(mlr_predictions - actual))
+    mlr_r2 <- cor(mlr_predictions, actual)^2
+    
+    mlr_rmse_systolic <- c(mlr_rmse_systolic, mlr_rmse)
+    mlr_mae_systolic <- c(mlr_mae_systolic, mlr_mae)
+    mlr_r2_systolic <- c(mlr_r2_systolic, mlr_r2)
+    #Robust Regression
+    robust_model <- rlm(Systolic ~ Age + BMI + SocialStatus + Gender + SmokeStatus +
+                          AlcoholPercentage + FibreEnergy + CarbohydrateEnergy + 
+                          Identity + SodiumPotassiumRatio, data = data_train)
+    
+    robust_predictions <- predict(robust_model, newdata = data_test)
+    
+    robust_rmse <- sqrt(mean((robust_predictions - actual)^2))
+    robust_mae <- mean(abs(robust_predictions - actual))
+    robust_r2 <- cor(robust_predictions, actual)^2
+    
+    robust_rmse_systolic <- c(robust_rmse_systolic, robust_rmse)
+    robust_mae_systolic <- c(robust_mae_systolic, robust_mae)
+    robust_r2_systolic <- c(robust_r2_systolic, robust_r2)
+  }
+}
+
+mean_systolic_gam_rmse <- mean(gam_rmse_systolic)
+mean_systolic_gam_mae <- mean(gam_mae_systolic)
+mean_systolic_gam_r2 <- mean(gam_r2_systolic)
+
+mean_systolic_mlr_rmse <- mean(mlr_rmse_systolic)
+mean_systolic_mlr_mae <- mean(mlr_mae_systolic)
+mean_systolic_mlr_r2 <- mean(mlr_r2_systolic)
+
+mean_systolic_robust_rmse <- mean(robust_rmse_systolic)
+mean_systolic_robust_mae <- mean(robust_mae_systolic)
+mean_systolic_robust_r2 <- mean(robust_r2_systolic)
+```
+
+```{r model performance[Systolic](Figure6), fig.width=8}
+Systolic_df <- data.frame(
+    Model = c("GAM", "Multiple Linear Regression", "Robust"),
+    RMSE = c(mean_systolic_gam_rmse, mean_systolic_mlr_rmse, mean_systolic_robust_rmse),
+    MAE = c(mean_systolic_gam_mae, mean_systolic_mlr_mae, mean_systolic_robust_mae),
+    R2 = c(mean_systolic_gam_r2, mean_systolic_mlr_r2, mean_systolic_robust_r2)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#FF5179', '#BF59D9', '#E76BF3')
+
+rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 6: RMSE [Left], MAE [Middle], R² [Right] for Full Model and Reduced Model(Systolic)", 
+                      font = list(size = 12)))
+
+SystolicFig
+```
+## Diastolic
+```{r model comparision metric[Diastolic]}
+set.seed(3888)
+gam_rmse_diastolic <- numeric()
+gam_mae_diastolic <- numeric()
+gam_r2_diastolic <- numeric()
+
+mlr_rmse_diastolic <- numeric()
+mlr_mae_diastolic <- numeric()
+mlr_r2_diastolic <- numeric()
+
+robust_rmse_diastolic <- numeric()
+robust_mae_diastolic <- numeric()
+robust_r2_diastolic <- numeric()
+
+for (r in 1:repeats) {
+  folds <- sample(rep(1:k, length.out = n))
+  
+  for (i in 1:k) {
+    train_idx <- which(folds != i)
+    test_idx <- which(folds == i)
+    data_train <- normalized_data[train_idx, ]
+    data_test <- normalized_data[test_idx, ]
+    
+    actual <- data_test$Diastolic
+    #GAM
+    gam_model <- gam(Diastolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
+                       s(AlcoholPercentage) + s(FibreEnergy) + s(CarbohydrateEnergy) + 
+                       Identity + s(SodiumPotassiumRatio),
+                     data = data_train)
+    
+    gam_predictions <- predict(gam_model, newdata = data_test)
+    
+    gam_rmse <- sqrt(mean((gam_predictions - actual)^2))
+    gam_mae <- mean(abs(gam_predictions - actual))
+    gam_r2 <- cor(gam_predictions, actual)^2
+    
+    gam_rmse_diastolic <- c(gam_rmse_diastolic, gam_rmse)
+    gam_mae_diastolic <- c(gam_mae_diastolic, gam_mae)
+    gam_r2_diastolic <- c(gam_r2_diastolic, gam_r2)
+    #Multiple Linear Regression
+    mlr_model <- lm(Diastolic ~ Age + BMI + SocialStatus + Gender + SmokeStatus +
+                      AlcoholPercentage + FibreEnergy + CarbohydrateEnergy + 
+                      Identity + SodiumPotassiumRatio, data = data_train)
+    
+    mlr_predictions <- predict(mlr_model, newdata = data_test)
+    
+    mlr_rmse <- sqrt(mean((mlr_predictions - actual)^2))
+    mlr_mae <- mean(abs(mlr_predictions - actual))
+    mlr_r2 <- cor(mlr_predictions, actual)^2
+    
+    mlr_rmse_diastolic <- c(mlr_rmse_diastolic, mlr_rmse)
+    mlr_mae_diastolic <- c(mlr_mae_diastolic, mlr_mae)
+    mlr_r2_diastolic <- c(mlr_r2_diastolic, mlr_r2)
+    #Robust Regression
+    robust_model <- rlm(Diastolic ~ Age + BMI + SocialStatus + Gender + SmokeStatus +
+                          AlcoholPercentage + FibreEnergy + CarbohydrateEnergy + 
+                          Identity + SodiumPotassiumRatio, data = data_train)
+    
+    robust_predictions <- predict(robust_model, newdata = data_test)
+    
+    robust_rmse <- sqrt(mean((robust_predictions - actual)^2))
+    robust_mae <- mean(abs(robust_predictions - actual))
+    robust_r2 <- cor(robust_predictions, actual)^2
+    
+    robust_rmse_diastolic <- c(robust_rmse_diastolic, robust_rmse)
+    robust_mae_diastolic <- c(robust_mae_diastolic, robust_mae)
+    robust_r2_diastolic <- c(robust_r2_diastolic, robust_r2)
+  }
+}
+
+mean_diastolic_gam_rmse <- mean(gam_rmse_diastolic)
+mean_diastolic_gam_mae <- mean(gam_mae_diastolic)
+mean_diastolic_gam_r2 <- mean(gam_r2_diastolic)
+
+mean_diastolic_mlr_rmse <- mean(mlr_rmse_diastolic)
+mean_diastolic_mlr_mae <- mean(mlr_mae_diastolic)
+mean_diastolic_mlr_r2 <- mean(mlr_r2_diastolic)
+
+mean_diastolic_robust_rmse <- mean(robust_rmse_diastolic)
+mean_diastolic_robust_mae <- mean(robust_mae_diastolic)
+mean_diastolic_robust_r2 <- mean(robust_r2_diastolic)
+```
+
+```{r model performance[Diastolic](Figure7), fig.width=8}
+Diastolic_df <- data.frame(
+    Model = c("GAM", "Multiple Linear Regression", "Robust"),
+    RMSE = c(mean_diastolic_gam_rmse, mean_diastolic_mlr_rmse, mean_diastolic_robust_rmse),
+    MAE = c(mean_diastolic_gam_mae, mean_diastolic_mlr_mae, mean_diastolic_robust_mae),
+    R2 = c(mean_diastolic_gam_r2, mean_diastolic_mlr_r2, mean_diastolic_robust_r2)
+)
+
+colors <- c('#FF5179', '#BF59D9', '#E76BF3')
+
+rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
+
+Diastolic_rmse <- plot_ly(Diastolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_mae <- plot_ly(Diastolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+DiastolicFig <- subplot(
+  Diastolic_rmse, 
+  Diastolic_mae, 
+  Diastolic_r2, 
+  nrows = 1, 
+  shareY = FALSE
+) %>%
+  layout(title = list(text = "Figure 7: RMSE [Left], MAE [Middle], R² [Right] for Full Model and Reduced Model(Diastolic)", 
+                      font = list(size = 12)))
+
+DiastolicFig
+```
+
+# Full model vs Reduced model
+```{r systolic full vs reduced}
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+gam_full_rmse_systolic <- numeric()
+gam_full_mae_systolic <- numeric()
+gam_full_r2_systolic <- numeric()
+
+gam_reduced_rmse_systolic <- numeric()
+gam_reduced_mae_systolic <- numeric()
+gam_reduced_r2_systolic <- numeric()
+
+n <- nrow(normalized_data)
+
+for (r in 1:repeats) {
+  folds <- sample(rep(1:k, length.out = n))
+  
+  for (i in 1:k) {
+    train_idx <- which(folds != i)
+    test_idx <- which(folds == i)
+    
+    data_train <- normalized_data[train_idx, ]
+    data_test <- normalized_data[test_idx, ]
+    
+    actual <- data_test$Systolic
+    #GAM full
+    gam_full_model <- gam(Systolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
+                       s(AlcoholPercentage) + s(FibreEnergy) + s(CarbohydrateEnergy) + 
+                       Identity + s(SodiumPotassiumRatio),
+                     data = data_train)
+    
+    gam_full_predictions <- predict(gam_full_model, newdata = data_test)
+    
+    gam_full_rmse <- sqrt(mean((gam_full_predictions - actual)^2))
+    gam_full_mae <- mean(abs(gam_full_predictions - actual))
+    gam_full_r2 <- cor(gam_full_predictions, actual)^2
+    
+    gam_full_rmse_systolic <- c(gam_full_rmse_systolic, gam_full_rmse)
+    gam_full_mae_systolic <- c(gam_full_mae_systolic, gam_full_mae)
+    gam_full_r2_systolic <- c(gam_full_r2_systolic, gam_full_r2)
+    
+    #GAM reduced
+    gam_reduced_model <- gam(Systolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
+                       s(AlcoholPercentage) + Identity + s(SodiumPotassiumRatio), data = data_train)
+    gam_reduced_predictions <- predict(gam_reduced_model, newdata = data_test)
+    
+    gam_reduced_rmse <- sqrt(mean((gam_reduced_predictions - actual)^2))
+    gam_reduced_mae <- mean(abs(gam_reduced_predictions - actual))
+    gam_reduced_r2 <- cor(gam_reduced_predictions, actual)^2
+    
+    gam_reduced_rmse_systolic <- c(gam_reduced_rmse_systolic, gam_reduced_rmse)
+    gam_reduced_mae_systolic <- c(gam_reduced_mae_systolic, gam_reduced_mae)
+    gam_reduced_r2_systolic <- c(gam_reduced_r2_systolic, gam_reduced_r2)
+  }
+}
+
+mean_systolic_gam_full_rmse <- mean(gam_full_rmse_systolic)
+mean_systolic_gam_full_mae <- mean(gam_full_mae_systolic)
+mean_systolic_gam_full_r2 <- mean(gam_full_r2_systolic)
+
+mean_systolic_gam_reduced_rmse <- mean(gam_reduced_rmse_systolic)
+mean_systolic_gam_reduced_mae <- mean(gam_reduced_mae_systolic)
+mean_systolic_gam_reduced_r2 <- mean(gam_reduced_r2_systolic)
+```
+
+```{r systolic full vs reduced(Figure 8), fig.width=8}
+Systolic_df <- data.frame(
+    Model = c("GAM Full", "GAM Reduced"),
+    RMSE = c(mean_systolic_gam_full_rmse, mean_systolic_gam_reduced_rmse),
+    MAE = c(mean_systolic_gam_full_mae, mean_systolic_gam_reduced_mae),
+    R2 = c(mean_systolic_gam_full_r2, mean_systolic_gam_reduced_r2)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#FF5179', '#BF59D9')
+
+rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE, titleX = TRUE) %>%
+  layout(title = list(text = "Figure 8: RMSE [Left], MAE [Middle], R² [Right] for Full and Reduced GAM (Systolic)", 
+                      font = list(size = 12)))
+
+SystolicFig
+```
+
+```{r diastolic full vs reduced}
+set.seed(3888)
+k <- 5
+repeats <- 3
+
+gam_full_rmse_diastolic <- numeric()
+gam_full_mae_diastolic <- numeric()
+gam_full_r2_diastolic <- numeric()
+
+gam_reduced_rmse_diastolic <- numeric()
+gam_reduced_mae_diastolic <- numeric()
+gam_reduced_r2_diastolic <- numeric()
+
+n <- nrow(normalized_data)
+
+for (r in 1:repeats) {
+  folds <- sample(rep(1:k, length.out = n))
+  
+  for (i in 1:k) {
+    train_idx <- which(folds != i)
+    test_idx <- which(folds == i)
+    
+    data_train <- normalized_data[train_idx, ]
+    data_test <- normalized_data[test_idx, ]
+    
+    actual <- data_test$Diastolic
+    #GAM full
+    gam_full_model <- gam(Diastolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
+                       s(AlcoholPercentage) + s(FibreEnergy) + s(CarbohydrateEnergy) + 
+                       Identity + s(SodiumPotassiumRatio),
+                     data = data_train)
+    
+    gam_full_predictions <- predict(gam_full_model, newdata = data_test)
+    
+    gam_full_rmse <- sqrt(mean((gam_full_predictions - actual)^2))
+    gam_full_mae <- mean(abs(gam_full_predictions - actual))
+    gam_full_r2 <- cor(gam_full_predictions, actual)^2
+    
+    gam_full_rmse_diastolic <- c(gam_full_rmse_diastolic, gam_full_rmse)
+    gam_full_mae_diastolic <- c(gam_full_mae_diastolic, gam_full_mae)
+    gam_full_r2_diastolic <- c(gam_full_r2_diastolic, gam_full_r2)
+    
+    #GAM reduced
+    gam_reduced_model <- gam(Diastolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
+                       s(AlcoholPercentage) + Identity + s(SodiumPotassiumRatio), data = data_train)
+    gam_reduced_predictions <- predict(gam_reduced_model, newdata = data_test)
+    
+    gam_reduced_rmse <- sqrt(mean((gam_reduced_predictions - actual)^2))
+    gam_reduced_mae <- mean(abs(gam_reduced_predictions - actual))
+    gam_reduced_r2 <- cor(gam_reduced_predictions, actual)^2
+    
+    gam_reduced_rmse_diastolic <- c(gam_reduced_rmse_diastolic, gam_reduced_rmse)
+    gam_reduced_mae_diastolic <- c(gam_reduced_mae_diastolic, gam_reduced_mae)
+    gam_reduced_r2_diastolic <- c(gam_reduced_r2_diastolic, gam_reduced_r2)
+  }
+}
+
+mean_diastolic_gam_full_rmse <- mean(gam_full_rmse_diastolic)
+mean_diastolic_gam_full_mae <- mean(gam_full_mae_diastolic)
+mean_diastolic_gam_full_r2 <- mean(gam_full_r2_diastolic)
+
+mean_diastolic_gam_reduced_rmse <- mean(gam_reduced_rmse_diastolic)
+mean_diastolic_gam_reduced_mae <- mean(gam_reduced_mae_diastolic)
+mean_diastolic_gam_reduced_r2 <- mean(gam_reduced_r2_diastolic)
+```
+
+```{r diastolic full vs reduced(Figure 9), fig.width=8}
+Diastolic_df <- data.frame(
+    Model = c("GAM Full", "GAM Reduced"),
+    RMSE = c(mean_diastolic_gam_full_rmse, mean_diastolic_gam_reduced_rmse),
+    MAE = c(mean_diastolic_gam_full_mae, mean_diastolic_gam_reduced_mae),
+    R2 = c(mean_diastolic_gam_full_r2, mean_diastolic_gam_reduced_r2)
+)
+
+# Define custom colors for the bar plots
+colors <- c('#FF5179', '#BF59D9')
+
+rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
+
+Diastolic_rmse <- plot_ly(Diastolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_mae <- plot_ly(Diastolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE, titleX = TRUE) %>%
+  layout(title = list(text = "Figure 9: RMSE [Left], MAE [Middle], R² [Right] for Full and Reduced GAM (Diastolic)", 
+                      font = list(size = 12)))
+
+DiastolicFig
+```
+
+# Stratify
+
+## Function for CV
+
+```{r function for systiolic cv}
+k <- 5
+repeats <- 3
+
+sys_cv <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Systolic
+      
+      gam_model <- gam(Systolic ~ s(FibreEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+```
+
+```{r function for diastolic cv}
+dia_cv <- function(data) {
+  n <- nrow(data)
+
+  folds <- map(1:repeats, ~ sample(rep(1:k, length.out = n)))
+  
+  results <- map_dfr(folds, function(fold) {
+    map_dfr(1:k, function(i) {
+      train_idx <- which(fold != i)
+      test_idx <- which(fold == i)
+      
+      data_train <- data[train_idx, ]
+      data_test <- data[test_idx, ]
+      
+      actual <- data_test$Diastolic
+      
+      gam_model <- gam(Diastolic ~ s(FibreEnergy) + s(CarbohydrateEnergy), data = data_train)
+      
+      gam_predictions <- predict(gam_model, newdata = data_test)
+      
+      tibble(
+        rmse = sqrt(mean((gam_predictions - actual)^2)),
+        mae = mean(abs(gam_predictions - actual)),
+        r2 = cor(gam_predictions, actual)^2
+      )
+    })
+  })
+
+  summary_results <- results %>%
+    summarize(
+      mean_rmse = mean(rmse),
+      mean_mae = mean(mae),
+      mean_r2 = mean(r2)
+    )
+  
+  return(summary_results)
+}
+```
+
+## By Age
+### Group
+```{r age group, warning = FALSE, message=FALSE}
+age1 <- selected_data %>% filter(Age < 35) %>% select_if(is.numeric)
+
+age2 <- selected_data %>%
+  filter(Age >= 35 & Age < 65) %>% select_if(is.numeric)
+
+age3 <- selected_data %>% filter(Age >= 65) %>% select_if(is.numeric)
+```
+
+### Systolic
+```{r age systolic result}
+set.seed(3888)
+results_age1 <- sys_cv(age1)
+results_age2 <- sys_cv(age2)
+results_age3 <- sys_cv(age3)
+
+gam_rmse_diastolic_ag1 <- results_age1$mean_rmse
+gam_mae_diastolic_ag1 <- results_age1$mean_mae
+gam_r2_diastolic_ag1 <- results_age1$mean_r2
+
+gam_rmse_diastolic_ag2 <- results_age2$mean_rmse
+gam_mae_diastolic_ag2 <- results_age2$mean_mae
+gam_r2_diastolic_ag2 <- results_age2$mean_r2
+
+gam_rmse_diastolic_ag3 <- results_age3$mean_rmse
+gam_mae_diastolic_ag3 <- results_age3$mean_mae
+gam_r2_diastolic_ag3 <- results_age3$mean_r2
+```
+
+```{r age systolic(Figure10), fig.width=8}
+Systolic_df <- data.frame(
+    Model = c("18-34", "35-64","65-85"),
+    RMSE = c(gam_rmse_diastolic_ag1, gam_rmse_diastolic_ag2, gam_rmse_diastolic_ag3),
+    MAE = c(gam_mae_diastolic_ag1, gam_mae_diastolic_ag2, gam_mae_diastolic_ag3),
+    R2 = c(gam_r2_diastolic_ag1, gam_r2_diastolic_ag2, gam_r2_diastolic_ag3)
+)
+
+colors <- c('#FF5179', '#BF59D9', '#E76BF3')
+
+rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 10: RMSE [Left], MAE [Middle], R² [Right] for Age Groups (Systolic)"), 
+                      font = list(size = 12))
+
+AgeSystolicFig
+```
+
+### Diastolic
+
+```{r age diastolic result}
+set.seed(3888)
+results_age1 <- dia_cv(age1)
+results_age2 <- dia_cv(age2)
+results_age3 <- dia_cv(age3)
+
+gam_rmse_diastolic_ag1 <- results_age1$mean_rmse
+gam_mae_diastolic_ag1 <- results_age1$mean_mae
+gam_r2_diastolic_ag1 <- results_age1$mean_r2
+
+gam_rmse_diastolic_ag2 <- results_age2$mean_rmse
+gam_mae_diastolic_ag2 <- results_age2$mean_mae
+gam_r2_diastolic_ag2 <- results_age2$mean_r2
+
+gam_rmse_diastolic_ag3 <- results_age3$mean_rmse
+gam_mae_diastolic_ag3 <- results_age3$mean_mae
+gam_r2_diastolic_ag3 <- results_age3$mean_r2
+```
+
+
+```{r age diastolic(Figure11), fig.width=8}
+Diastolic_df <- data.frame(
+    Model = c("18-34", "35-64","65-85"),
+    RMSE = c(gam_rmse_diastolic_ag1, gam_rmse_diastolic_ag2, gam_rmse_diastolic_ag3),
+    MAE = c(gam_mae_diastolic_ag1, gam_mae_diastolic_ag2, gam_mae_diastolic_ag3),
+    R2 = c(gam_r2_diastolic_ag1, gam_r2_diastolic_ag2, gam_r2_diastolic_ag3)
+)
+
+colors <- c('#FF5179', '#BF59D9', '#E76BF3')
+
+rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
+
+Diastolic_rmse <- plot_ly(Diastolic_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+Diastolic_mae <- plot_ly(Diastolic_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 11: RMSE [Left], MAE [Middle], R² [Right] for Age Groups (Diastolic)"), font = list(size = 12))
+
+DiastolicFig
+```
+
+### Partial effect plots - align with the model summary
+
+```{r age model}
+age_model_1 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = age1)
+age_model_2 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = age2)
+age_model_3 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = age3)
+
+age_model_4 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = age1)
+age_model_5 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = age2)
+age_model_6 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = age3)
+
+```
+
+#### FibreEnergy
+```{r age FibreEnergy(Figure12), fig.width= 12, fig.height=14}
+par(mfrow = c(3, 2))
+
+fiber_color <- "blue"
+
+plot(age_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 12.1 18-34 Group - Systolic - FibreEnergy")
+plot(age_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 12.4 18-34 Group - Diastolic - FibreEnergy")
+plot(age_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 12.2 35-64 Group - Systolic - FibreEnergy")
+plot(age_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 12.5 35-64 Group - Diastolic - FibreEnergy")
+plot(age_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 12.3 65-85 Group - Systolic - FibreEnergy")
+plot(age_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 12.6 65-85 Group - Diastolic - FibreEnergy")
+
+par(mfrow = c(1, 1))
+```
+
+#### CarbohydrateEnergy
+```{r age carbohydrateenergy(Figure13), fig.width= 12, fig.height=14}
+par(mfrow = c(3, 2))
+carb_color <- "red"
+
+plot(age_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 13.1 18-34 Group - Systolic - CarbohydrateEnergy")
+plot(age_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 13.2 18-34 Group - Diastolic - CarbohydrateEnergy")
+plot(age_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 13.3 35-64 Group - Systolic - CarbohydrateEnergy")
+plot(age_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 13.4 35-64 Group - Diastolic - CarbohydrateEnergy")
+plot(age_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 13.5 65-85 Group - Systolic - CarbohydrateEnergy")
+plot(age_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 13.6 65-85 Group - Diastolic - CarbohydrateEnergy")
+par(mfrow = c(1, 1))
+```
+
+## By BMI
+### Group
+```{r bmi group}
+light <- selected_data %>% filter(BMI < 24.9)
+
+normal <- selected_data %>% filter(BMI >= 24.9 & BMI <= 29.9)
+
+heavy <- selected_data %>% filter(BMI > 29.9)
+```
+
+### Systolic
+```{r bmi result}
+set.seed(3888)
+results_light <- sys_cv(light)
+results_normal <- sys_cv(normal)
+results_heavy <- sys_cv(heavy)
+
+gam_rmse_systolic_light <- results_light$mean_rmse
+gam_mae_systolic_light <- results_light$mean_mae
+gam_r2_systolic_light <- results_light$mean_r2
+
+gam_rmse_systolic_normal <- results_normal$mean_rmse
+gam_mae_systolic_normal <- results_normal$mean_mae
+gam_r2_systolic_normal <- results_normal$mean_r2
+
+gam_rmse_systolic_heavy <- results_heavy$mean_rmse
+gam_mae_systolic_heavy <- results_heavy$mean_mae
+gam_r2_systolic_heavy <- results_heavy$mean_r2
+```
+
+```{r bmi result(Figure14), fig.width=8}
+Systolic_df <- data.frame(
+    Group = c("Light BMI", "Normal BMI", "Heavy BMI"),
+    RMSE = c(gam_rmse_systolic_light, gam_rmse_systolic_normal, gam_rmse_systolic_heavy),
+    MAE = c(gam_mae_systolic_light, gam_mae_systolic_normal, gam_mae_systolic_heavy),
+    R2 = c(gam_r2_systolic_light, gam_r2_systolic_normal, gam_r2_systolic_heavy)
+)
+
+colors <- c('#FF5179', '#BF59D9', '#E76BF3')
+
+rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 14: RMSE [Left], MAE [Middle], R² [Right] for BMI Groups (Systolic)"), font = list(size = 12))
+
+SystolicFig
+```
+
+### Diastolic
+```{r bmi diastolic result}
+set.seed(3888)
+results_light_dias <- dia_cv(light)
+results_normal_dias <- dia_cv(normal)
+results_heavy_dias <- dia_cv(heavy)
+
+gam_rmse_diastolic_light <- results_light_dias$mean_rmse
+gam_mae_diastolic_light <- results_light_dias$mean_mae
+gam_r2_diastolic_light <- results_light_dias$mean_r2
+
+gam_rmse_diastolic_normal <- results_normal_dias$mean_rmse
+gam_mae_diastolic_normal <- results_normal_dias$mean_mae
+gam_r2_diastolic_normal <- results_normal_dias$mean_r2
+
+gam_rmse_diastolic_heavy <- results_heavy_dias$mean_rmse
+gam_mae_diastolic_heavy <- results_heavy_dias$mean_mae
+gam_r2_diastolic_heavy <- results_heavy_dias$mean_r2
+```
+
+```{r bmi diastolic(Figure15), fig.width=8}
+Diastolic_df <- data.frame(
+    Group = c("Light BMI", "Normal BMI", "Heavy BMI"),
+    RMSE = c(gam_rmse_diastolic_light, gam_rmse_diastolic_normal, gam_rmse_diastolic_heavy),
+    MAE = c(gam_mae_diastolic_light, gam_mae_diastolic_normal, gam_mae_diastolic_heavy),
+    R2 = c(gam_r2_diastolic_light, gam_r2_diastolic_normal, gam_r2_diastolic_heavy)
+)
+
+colors <- c('#FF5179', '#BF59D9', '#E76BF3')
+
+rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
+
+Diastolic_rmse <- plot_ly(Diastolic_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_mae <- plot_ly(Diastolic_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 15: RMSE [Left], MAE [Middle], R² [Right] for BMI Groups (Diastolic)"), font = list(size = 12))
+
+DiastolicFig
+```
+
+### Partial effect plots - align with the model summary
+
+```{r bmi model}
+bmi_model_1 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = light)
+bmi_model_2 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = normal)
+bmi_model_3 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = heavy)
+
+bmi_model_4 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = light)
+bmi_model_5 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = normal)
+bmi_model_6 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = heavy)
+
+```
+
+#### FibreEnergy
+```{r age FibreEnergy(Figure16), fig.width= 12, fig.height=14}
+par(mfrow = c(3, 2))
+
+fiber_color <- "blue"
+
+plot(bmi_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 16.1 Low BMI Group - Systolic - FibreEnergy")
+plot(bmi_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 16.4 Low BMI Group - Diastolic - FibreEnergy")
+plot(bmi_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 16.2 Normal BMI Group - Systolic - FibreEnergy")
+plot(bmi_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 16.5 Normal BMI Group - Diastolic - FibreEnergy")
+plot(bmi_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 16.3 High BMI Group - Systolic - FibreEnergy")
+plot(bmi_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 16.6 High BMI Group - Diastolic - FibreEnergy")
+par(mfrow = c(1, 1))
+```
+
+#### CarbohydrateEnergy
+```{r age carbohydrateenergy(Figure17), fig.width= 12, fig.height=14}
+par(mfrow = c(3, 2))
+carb_color <- "red"
+
+plot(bmi_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 17.1 Low BMI Group - Systolic - CarbohydrateEnergy")
+plot(bmi_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 17.2 Low BMI Group - Diastolic - CarbohydrateEnergy")
+plot(bmi_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 17.3 Normal BMI Group - Systolic - CarbohydrateEnergy")
+plot(bmi_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 17.4 Normal BMI Group - Diastolic - CarbohydrateEnergy")
+plot(bmi_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 17.5 High BMI Group - Systolic - CarbohydrateEnergy")
+plot(bmi_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 17.6 High BMI Group - Diastolic - CarbohydrateEnergy")
+par(mfrow = c(1, 1))
+```
+
+## By AlcoholPercentage
+### Group
+```{r alcohol group}
+nonalcohol <- selected_data %>% filter(AlcoholPercentage == 0)
+
+alcohol <- selected_data %>% filter(AlcoholPercentage > 0)
+```
+
+### Systolic
+
+```{r alcohol systolic result}
+set.seed(3888)
+results_nonalcohol <- sys_cv(nonalcohol)
+results_alcohol <- sys_cv(alcohol)
+
+gam_rmse_systolic_nonalcohol <- results_nonalcohol$mean_rmse
+gam_mae_systolic_nonalcohol <- results_nonalcohol$mean_mae
+gam_r2_systolic_nonalcohol <- results_nonalcohol$mean_r2
+
+gam_rmse_systolic_alcohol <- results_alcohol$mean_rmse
+gam_mae_systolic_alcohol <- results_alcohol$mean_mae
+gam_r2_systolic_alcohol <- results_alcohol$mean_r2
+```
+
+```{r alcohol systolic result(Figure18), fig.width=8}
+Systolic_alcohol_df <- data.frame(
+    Group = c("Non-Alcohol", "Alcohol"),
+    RMSE = c(gam_rmse_systolic_nonalcohol, gam_rmse_systolic_alcohol),
+    MAE = c(gam_mae_systolic_nonalcohol, gam_mae_systolic_alcohol),
+    R2 = c(gam_r2_systolic_nonalcohol, gam_r2_systolic_alcohol)
+)
+
+colors_alcohol <- c('#FF5179', '#BF59D9')
+
+rmse_range_alcohol <- c(min(Systolic_alcohol_df$RMSE) * 0.95, max(Systolic_alcohol_df$RMSE) * 1.05)
+mae_range_alcohol <- c(min(Systolic_alcohol_df$MAE) * 0.95, max(Systolic_alcohol_df$MAE) * 1.05)
+r2_range_alcohol <- c(min(Systolic_alcohol_df$R2) * 0.95, max(Systolic_alcohol_df$R2) * 1.05)
+
+Systolic_rmse_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range_alcohol),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range_alcohol),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range_alcohol),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+SystolicFig_alcohol <- subplot(Systolic_rmse_alcohol, Systolic_mae_alcohol, Systolic_r2_alcohol, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 18: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)"), 
+                      font = list(size = 12))
+
+SystolicFig_alcohol
+```
+
+### Diastolic
+```{r alcohol diastolic result}
+set.seed(3888)
+results_nonalcohol_dias <- dia_cv(nonalcohol)
+results_alcohol_dias <- dia_cv(alcohol)
+
+gam_rmse_diastolic_nonalcohol <- results_nonalcohol_dias$mean_rmse
+gam_mae_diastolic_nonalcohol <- results_nonalcohol_dias$mean_mae
+gam_r2_diastolic_nonalcohol <- results_nonalcohol_dias$mean_r2
+
+gam_rmse_diastolic_alcohol <- results_alcohol_dias$mean_rmse
+gam_mae_diastolic_alcohol <- results_alcohol_dias$mean_mae
+gam_r2_diastolic_alcohol <- results_alcohol_dias$mean_r2
+```
+
+```{r alcohol diastolic result(Figure19), fig.width=8}
+Diastolic_alcohol_df <- data.frame(
+    Group = c("Non-Alcohol", "Alcohol"),
+    RMSE = c(gam_rmse_diastolic_nonalcohol, gam_rmse_diastolic_alcohol),
+    MAE = c(gam_mae_diastolic_nonalcohol, gam_mae_diastolic_alcohol),
+    R2 = c(gam_r2_diastolic_nonalcohol, gam_r2_diastolic_alcohol)
+)
+
+colors_alcohol <- c('#FF5179', '#BF59D9')
+
+rmse_range_alcohol <- c(min(Diastolic_alcohol_df$RMSE) * 0.95, max(Diastolic_alcohol_df$RMSE) * 1.05)
+mae_range_alcohol <- c(min(Diastolic_alcohol_df$MAE) * 0.95, max(Diastolic_alcohol_df$MAE) * 1.05)
+r2_range_alcohol <- c(min(Diastolic_alcohol_df$R2) * 0.95, max(Diastolic_alcohol_df$R2) * 1.05)
+
+Diastolic_rmse_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range_alcohol),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_mae_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range_alcohol),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Diastolic_r2_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range_alcohol),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+DiastolicFig_alcohol <- subplot(Diastolic_rmse_alcohol, Diastolic_mae_alcohol, Diastolic_r2_alcohol, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 19: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Diastolic)"), 
+                      font = list(size = 12))
+
+DiastolicFig_alcohol
+```
+
+### Partial effect plots - align with the model summary
+
+```{r alcohol model}
+alc_model_1 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = nonalcohol)
+alc_model_2 <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = alcohol)
+alc_model_3 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = nonalcohol)
+alc_model_4 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = alcohol)
+```
+
+#### FibreEnergy
+```{r alcohol FibreEnergy(Figure20), fig.width= 12, fig.height=8}
+par(mfrow = c(2, 2))
+
+fiber_color <- "blue"
+
+plot(alc_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 20.1 non-alcohol Group - Systolic - FibreEnergy")
+plot(alc_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 20.4 non-alcohol Group - Diastolic - FibreEnergy")
+plot(alc_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 20.2 alcohol Group - Systolic - FibreEnergy")
+plot(alc_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 20.5 alcohol Group - Diastolic - FibreEnergy")
+
+par(mfrow = c(1, 1))
+```
+
+#### CarbohydrateEnergy
+```{r alcohol carbohydrateenergy(Figure21), fig.width= 12, fig.height=8}
+par(mfrow = c(2, 2))
+carb_color <- "red"
+
+plot(alc_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 21.1 non-alcohol Group - Systolic - CarbohydrateEnergy")
+plot(alc_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 21.2 non-alcohol Group - Diastolic - CarbohydrateEnergy")
+plot(alc_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 21.3 alcohol Group - Systolic - CarbohydrateEnergy")
+plot(alc_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 21.4 alcohol Group - Diastolic - CarbohydrateEnergy")
+par(mfrow = c(1, 1))
+```
+
+## By Gender
+### Group
+```{r gender group, warning = FALSE, message=FALSE}
+male <- selected_data %>% filter(Gender == 1) %>% select_if(is.numeric)
+
+female <- selected_data %>% filter(Gender == 2) %>% select_if(is.numeric)
+```
+
+
+### Systolic
+```{r gender systolic}
+set.seed(3888)
+results_male <- sys_cv(male)
+results_female <- sys_cv(female)
+
+gam_rmse_diastolic_male <- results_male$mean_rmse
+gam_mae_diastolic_male <- results_male$mean_mae
+gam_r2_diastolic_male <- results_male$mean_r2
+
+gam_rmse_diastolic_female <- results_female$mean_rmse
+gam_mae_diastolic_female <- results_female$mean_mae
+gam_r2_diastolic_female <- results_female$mean_r2
+```
+
+```{r gender systolic result(Figure22), fig.width=8}
+Systolic_gender_df <- data.frame(
+    Model = c("Male", "Female"),
+    RMSE = c(gam_rmse_diastolic_male, gam_rmse_diastolic_female),
+    MAE = c(gam_mae_diastolic_male, gam_mae_diastolic_female),
+    R2 = c(gam_r2_diastolic_male, gam_r2_diastolic_female)
+)
+
+colors <- c('#FF5179', '#BF59D9')
+
+rmse_range <- c(min(Systolic_gender_df$RMSE) * 0.95, max(Systolic_gender_df$RMSE) * 1.05)
+mae_range <- c(min(Systolic_gender_df$MAE) * 0.95, max(Systolic_gender_df$MAE) * 1.05)
+r2_range <- c(min(Systolic_gender_df$R2) * 0.95, max(Systolic_gender_df$R2) * 1.05)
+
+Systolic_rmse <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_mae <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+Systolic_r2 <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)')
+
+GenderSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 22: RMSE [Left], MAE [Middle], R² [Right] for Gender Groups (Systolic)"), 
+                      font = list(size = 12))
+
+GenderSystolicFig
+```
+
+### Diastolic
+```{r gender diastolic result}
+set.seed(3888)
+
+results_male <- dia_cv(male)
+results_female <- dia_cv(female)
+
+gam_rmse_diastolic_male <- results_male$mean_rmse
+gam_mae_diastolic_male <- results_male$mean_mae
+gam_r2_diastolic_male <- results_male$mean_r2
+
+gam_rmse_diastolic_female <- results_female$mean_rmse
+gam_mae_diastolic_female <- results_female$mean_mae
+gam_r2_diastolic_female <- results_female$mean_r2
+```
+
+
+```{r gender diastolic result(Figure23), fig.width=8}
+Diastolic_gender_df <- data.frame(
+    Model = c("Male", "Female"),
+    RMSE = c(gam_rmse_diastolic_male, gam_rmse_diastolic_female),
+    MAE = c(gam_mae_diastolic_male, gam_mae_diastolic_female),
+    R2 = c(gam_r2_diastolic_male, gam_r2_diastolic_female)
+)
+
+colors <- c('#FF5179', '#BF59D9')
+
+rmse_range <- c(min(Diastolic_gender_df$RMSE) * 0.95, max(Diastolic_gender_df$RMSE) * 1.05)
+mae_range <- c(min(Diastolic_gender_df$MAE) * 0.95, max(Diastolic_gender_df$MAE) * 1.05)
+r2_range <- c(min(Diastolic_gender_df$R2) * 0.95, max(Diastolic_gender_df$R2) * 1.05)
+
+Diastolic_rmse <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(RMSE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'RMSE', range = rmse_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+Diastolic_mae <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(MAE, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'MAE', range = mae_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+Diastolic_r2 <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(R2, 3), type = 'bar', color = ~Model, colors = colors,
+               text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
+  layout(
+    yaxis = list(title = 'R²', range = r2_range),
+    showlegend = FALSE,
+    paper_bgcolor = 'rgba(245, 246, 249, 1)',
+    plot_bgcolor = 'rgba(0, 0, 0, 0)'
+  )
+
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
+  layout(title = list(text = "Figure 23: RMSE [Left], MAE [Middle], R² [Right] for Gender Groups (Diastolic)"), 
+                      font = list(size = 12))
+
+DiastolicFig
+```
+
+### Partial effect plots - align with the model summary
+
+```{r gender model}
+systolic_male <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = male)
+systolic_female <- gam(Systolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = female)
+
+diastolic_male <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = male)
+diastolic_female <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = female)
+```
+
+#### FibreEnergy
+```{r gender FibreEnergy(Figure24), fig.width= 12, fig.height=8}
+par(mfrow = c(2, 2))
+
+fiber_color <- "blue"
+
+plot(systolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 24.1 systolic_male Group - Systolic - FibreEnergy")
+plot(diastolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 24.2  diastolic_male Group - Diastolic - FibreEnergy")
+plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 24.3 systolic_female Group - Systolic - FibreEnergy")
+plot(diastolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = fiber_color, main = "Figure 24.4 distolic_female Group - Diastolic - FibreEnergy")
+
+par(mfrow = c(1, 1))
+```
+
+#### CarbohydrateEnergy
+```{r gender carbonhydrateenergy(Figure25), fig.width= 12, fig.height=8}
+par(mfrow = c(2, 2))
+carb_color <- "red"
+
+plot(systolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 25.1 systolic_male Group - Systolic - CarbohydrateEnergy")
+plot(diastolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 25.2 diastolic_male Group - Systolic - CarbohydrateEnergy")
+plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 25.3 systolic_female Group - Diastolic - CarbohydrateEnergy")
+plot(diastolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 25.4 diastolic_female Group - Diastolic - CarbohydrateEnergy")
+
+par(mfrow = c(1, 1))
+```
