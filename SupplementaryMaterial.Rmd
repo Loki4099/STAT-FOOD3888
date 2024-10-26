@@ -1436,6 +1436,143 @@ gam_reduced_model_S <- gam(Systolic ~ s(Age) + s(BMI) + SocialStatus + Gender + 
 plot(gam_full_model_S,se = TRUE)
 plot(gam_reduced_model_S,se = TRUE)
 ```
+```{r}
+# Extract key information from the model summaries
+full_model_summary <- summary(gam_full_model_S)
+reduced_model_summary <- summary(gam_reduced_model_S)
+
+# Check and extract R-squared
+full_model_rsq <- full_model_summary$r.sq
+reduced_model_rsq <- reduced_model_summary$r.sq
+
+# Check and extract Deviance Explained
+full_model_dev_expl <- full_model_summary$dev.expl
+reduced_model_dev_expl <- reduced_model_summary$dev.expl
+
+# Check and extract GCV
+full_model_gcv <- full_model_summary$sp.criterion[1]
+reduced_model_gcv <- reduced_model_summary$sp.criterion[1]
+
+# Extract parametric terms for both models
+full_model_params <- full_model_summary$p.table
+reduced_model_params <- reduced_model_summary$p.table
+
+# Extract smooth terms for both models
+full_model_smooth <- full_model_summary$s.table
+reduced_model_smooth <- reduced_model_summary$s.table
+
+# Combine parametric and smooth terms into a dataframe for both models
+parametric_full <- data.frame(
+  Term = rownames(full_model_params),
+  Estimate = full_model_params[, 1],
+  Std_Error = full_model_params[, 2],
+  T_Value = full_model_params[, 3],
+  P_Value = full_model_params[, 4],
+  Model = "Full Model"
+)
+
+parametric_reduced <- data.frame(
+  Term = rownames(reduced_model_params),
+  Estimate = reduced_model_params[, 1],
+  Std_Error = reduced_model_params[, 2],
+  T_Value = reduced_model_params[, 3],
+  P_Value = reduced_model_params[, 4],
+  Model = "Reduced Model"
+)
+
+smooth_full <- data.frame(
+  Term = rownames(full_model_smooth),
+  EDF = full_model_smooth[, 1],
+  Ref_DF = full_model_smooth[, 2],
+  F_Statistic = full_model_smooth[, 3],
+  P_Value = full_model_smooth[, 4],
+  Model = "Full Model"
+)
+
+smooth_reduced <- data.frame(
+  Term = rownames(reduced_model_smooth),
+  EDF = reduced_model_smooth[, 1],
+  Ref_DF = reduced_model_smooth[, 2],
+  F_Statistic = reduced_model_smooth[, 3],
+  P_Value = reduced_model_smooth[, 4],
+  Model = "Reduced Model"
+)
+
+# Add missing columns to parametric and smooth dataframes
+parametric_full$EDF <- NA
+parametric_full$Ref_DF <- NA
+parametric_full$F_Statistic <- NA
+
+parametric_reduced$EDF <- NA
+parametric_reduced$Ref_DF <- NA
+parametric_reduced$F_Statistic <- NA
+
+smooth_full$Estimate <- NA
+smooth_full$Std_Error <- NA
+smooth_full$T_Value <- NA
+
+smooth_reduced$Estimate <- NA
+smooth_reduced$Std_Error <- NA
+smooth_reduced$T_Value <- NA
+
+# Standardize the column order
+parametric_full <- parametric_full[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
+parametric_reduced <- parametric_reduced[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
+smooth_full <- smooth_full[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
+smooth_reduced <- smooth_reduced[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
+
+# Combine parametric and smooth terms into one dataframe
+model_results <- rbind(parametric_full, parametric_reduced, smooth_full, smooth_reduced)
+
+# Create separate dataframes for full model and reduced model
+full_model_results <- model_results[model_results$Model == "Full Model", ]
+reduced_model_results <- model_results[model_results$Model == "Reduced Model", ]
+
+# Create the summary table for the Full Model
+full_model_results %>%
+  gt() %>%
+  tab_header(
+    title = "GAM Model Summary: Full Model"
+  ) %>%
+  fmt_number(columns = c(Estimate, Std_Error, T_Value, P_Value, EDF, Ref_DF, F_Statistic), decimals = 3) %>%
+  cols_label(
+    Term = "Variable",
+    Estimate = "Estimate",
+    Std_Error = "Std Error",
+    T_Value = "T-Value",
+    P_Value = "P-Value",
+    EDF = "EDF",
+    Ref_DF = "Reference DF",
+    F_Statistic = "F-Statistic"
+  ) %>%
+  tab_options(
+    table.font.size = "medium",
+    heading.align = "center"
+  )
+
+# Create the summary table for the Reduced Model
+reduced_model_results %>%
+  gt() %>%
+  tab_header(
+    title = "GAM Model Summary: Reduced Model"
+  ) %>%
+  fmt_number(columns = c(Estimate, Std_Error, T_Value, P_Value, EDF, Ref_DF, F_Statistic), decimals = 3) %>%
+  cols_label(
+    Term = "Variable",
+    Estimate = "Estimate",
+    Std_Error = "Std Error",
+    T_Value = "T-Value",
+    P_Value = "P-Value",
+    EDF = "EDF",
+    Ref_DF = "Reference DF",
+    F_Statistic = "F-Statistic"
+  ) %>%
+  tab_options(
+    table.font.size = "medium",
+    heading.align = "center"
+  )
+```
+
 
 # Stratify
 
