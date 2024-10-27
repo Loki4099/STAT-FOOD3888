@@ -1729,8 +1729,81 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
 AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 8: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)", 
-                      font = list(size = 12)))
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Systolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.4,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.45, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.5, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 
 AgeSystolicFig
 ```
@@ -1799,8 +1872,81 @@ Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar
   )
 
 DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 9: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)", 
-                      font = list(size = 12)))
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Diastolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.4,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.45, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.5, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 
 DiastolicFig
 ```
@@ -1917,8 +2063,81 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
 SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 12: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)", 
-                      font = list(size = 12)))
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Systolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.10,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.10,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.10,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.30,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.35, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.40, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 
 SystolicFig
 ```
@@ -1982,9 +2201,81 @@ Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
 DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 13: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)", 
-                      font = list(size = 12)))
-
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Diastolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.30,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.35, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.40, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 DiastolicFig
 ```
 
@@ -2094,8 +2385,81 @@ Systolic_r2_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(R2, 3
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
 SystolicFig_alcohol <- subplot(Systolic_rmse_alcohol, Systolic_mae_alcohol, Systolic_r2_alcohol, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 16: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)", 
-                      font = list(size = 12)))
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Systolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.3,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.35, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.4, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 
 SystolicFig_alcohol
 ```
@@ -2154,8 +2518,81 @@ Diastolic_r2_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(R2,
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
 DiastolicFig_alcohol <- subplot(Diastolic_rmse_alcohol, Diastolic_mae_alcohol, Diastolic_r2_alcohol, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 17: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Diastolic)", 
-                      font = list(size = 12)))
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Diastolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.05,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.3,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.35, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.40, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 
 DiastolicFig_alcohol
 ```
@@ -2258,8 +2695,81 @@ Systolic_r2 <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(R2, 3), type =
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
 GenderSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 20: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)"), 
-                      font = list(size = 12))
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Systolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.125,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.125,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.125,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.3,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.35, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.40, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 
 GenderSystolicFig
 ```
@@ -2323,9 +2833,81 @@ Diastolic_r2 <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(R2, 3), type
   )
 
 DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
-  layout(title = list(text = "Figure 21: RMSE [Left], MAE [Middle], R² [Right] for Alcohol Groups (Systolic)", 
-                      font = list(size = 12)))
-
+  layout(
+    title = list(
+      text = "Figure 9: Model Comparison (Diastolic)",
+      font = list(size = 16), # Slightly larger title font
+      x = 0.5,
+      y = 1.15  # Move the title further from the subplots
+    ),
+    annotations = list(
+      # "A" label to the left of RMSE subplot, near y-axis
+      list(
+        text = "A",
+        x = 0, # Position it to the left of the first subplot
+        y = 1.1,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "B" label to the left of MAE subplot, near y-axis
+      list(
+        text = "B",
+        x = 0.35, # Position it to the left of the second subplot
+        y = 1.1,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # "C" label to the left of R² subplot, near y-axis
+      list(
+        text = "C",
+        x = 0.70, # Position it to the left of the third subplot
+        y = 1.1,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 14, color = "black"),
+        xanchor = "center"
+      ),
+      # Captions grouped together at the bottom-left
+      list(
+        text = "A. RMSE comparison for models",
+        x = 0, # Align to the far left
+        y = -0.3,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "B. MAE comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.35, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      ),
+      list(
+        text = "C. R² comparison for models",
+        x = 0, # Same x as the first caption
+        y = -0.40, # Slightly lower for spacing
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "left"
+      )
+    ),
+    margin = list(b = 140, t = 80) # Adjust margins as needed
+  )
 DiastolicFig
 ```
 
