@@ -159,7 +159,7 @@ data.frame(Variable = names(selected_data), Type = sapply(selected_data, class))
   tab_header(
     title = "Variable Names and Their Types"
   ) %>%
- tab_caption(caption = md("Table 1: Variable types table"))
+ tab_caption(caption = md("Variable types table"))
 ```
 
 # Na values + New Variables + Type Conversion
@@ -189,7 +189,7 @@ data.frame(Variable = names(selected_data), Type = sapply(selected_data, class))
   tab_header(
     title = "Variable Names and Their Types"
   ) %>%
- tab_caption(caption = md("Table 2: Variable types table after correction"))
+ tab_caption(caption = md("Variable types table after correction"))
 ```
 
 # Duplicate Values
@@ -202,7 +202,7 @@ selected_data %>%
   tibble::tibble(Dimension = c("Rows", "Columns"), Count = .) %>% 
   gt() %>%
   tab_header(title = "Dimensions of Unique Tibble") %>%
-  tab_caption(caption = md("Table 3: Dimensions of Unique Data Table"))
+  tab_caption(caption = md("Dimensions of Unique Data Table"))
 ```
 
 # Categrocial Distribution
@@ -218,7 +218,7 @@ plot_categorical_distribution <- function(data) {
       filter(!is.na(.data[[var]]))
     if (nrow(non_na_data) == 0) next
     
-    figure_title <- paste("Figure 3.", figure_counter, ": Proportion of Categories in", var, sep = "")
+    figure_title <- paste("Proportion of Categories in ", var, sep = "")
     
     p <- ggplot(non_na_data, aes(x = .data[[var]])) +       
       geom_bar(aes(y = (..count..) / sum(..count..), fill = .data[[var]]), color = "black") +       
@@ -284,13 +284,13 @@ variable_table <- variable_data %>%
   gt() %>%
   tab_header(title = "All related variables") %>%
   cols_label(Variable = "Variable",Description = "Description") %>%
-  tab_caption(caption = md("**Table 4:** Variable Descriptions"))%>%
+  tab_caption(caption = md("Variable Descriptions"))%>%
   fmt_markdown(columns = everything()) %>%
   tab_options(table.width = pct(100))
 
 variable_table
 ```
-
+This table may require table number as it may be placed in Methodology. 
 ```{r predictor(Table5)}
 selected_predictors <- selected_data %>%
   dplyr::select(FibreEnergy, CarbohydrateEnergy)
@@ -298,7 +298,7 @@ selected_predictors <- selected_data %>%
 predictor_table <- data.frame(Variable = names(selected_predictors), Type = sapply(selected_predictors, class)) %>%
   gt() %>%
   tab_header(title = "Variable Names and Their Types") %>%
-  tab_caption(caption = md("**Table 5**: Predictor variables and their data types"))
+  tab_caption(caption = md("Predictor variables and their data types"))
 
 predictor_table
 ```
@@ -310,7 +310,7 @@ confounding_vars <- selected_data %>%
 confounding_table <- data.frame(Variable = names(confounding_vars), Type = sapply(confounding_vars, class)) %>%
   gt() %>%
   tab_header(title = "Confounding Variables and Their Types") %>%
-  tab_caption(caption = md("**Table 6**: Confounding variables and their data types"))
+  tab_caption(caption = md("Confounding variables and their data types"))
 
 confounding_table
 ```
@@ -416,7 +416,7 @@ no_risk_count <- nrow(noriskdata)
 
 df %>%
   format_table(ci_brackets = c("(", ")")) %>%
-  export_table(format = "html", title = "Table 7: Demographic and Health Characteristics by Hypertension Status")
+  export_table(format = "html", title = "Table 1: Demographic and Health Characteristics by Hypertension Status")
 ```
 
 # Missing Values
@@ -427,7 +427,7 @@ selected_data %>%
   miss_var_summary() %>% 
   gt() %>%
   tab_header(title = "Missing Value") %>%
-  tab_caption(caption = md("Table 7: Missing Values in Selected Data")) %>%
+  tab_caption(caption = md("Missing Values in Selected Data")) %>%
   cols_label(variable = "Variable Name", n_miss = "Missing Count", pct_miss = "Percentage Missing") %>%
   fmt_number(columns = everything(), decimals = 2)
 ```
@@ -439,7 +439,7 @@ corr_matrix <- selected_data%>%
   cor(use = "complete.obs")
 
 ggcorrplot(corr_matrix, lab = TRUE, 
-           title = "Figure 2: Correlation Heatmap for ALL", 
+           title = "Correlation Heatmap for ALL", 
            colors = c("blue", "white", "red"),
            tl.cex = 9, lab_size = 4) + theme(legend.position = "none")
 ```
@@ -454,7 +454,7 @@ selected_data$Systolic[is.na(selected_data$Systolic)] <- lm(Systolic ~ Gender + 
 selected_data$Diastolic[is.na(selected_data$Diastolic)] <- lm(Diastolic ~ Gender + SocialStatus + Age + BMI + Systolic + SodiumPotassiumRatio + FibreEnergy + CarbohydrateEnergy + AlcoholPercentage + SmokeStatus + Identity, data = selected_data, na.action = na.exclude) %>% predict(newdata = selected_data[is.na(selected_data$Diastolic), ])
 
 vis_miss(selected_data %>% dplyr::select(-PersonID, -HouseID)) +
-  ggtitle("Figure 3: Missing Data Visualization of Selected Variables")
+  ggtitle("Missing Data Visualization of Selected Variables")
 ```
 
 # Normalization
@@ -472,7 +472,7 @@ normalized_data <- bind_cols(scaled_numeric_data, selected_data %>% dplyr::selec
 selected_data %>%
   dplyr::select(where(is.numeric), -Systolic, -Diastolic) %>%
   ggscatmat() +
-  ggtitle("Figure 4: Scatterplot Matrix of Selected Numeric Variables")
+  ggtitle("Scatterplot Matrix of Selected Numeric Variables")
 ```
 
 
@@ -480,9 +480,6 @@ selected_data %>%
 
 ## Scatter plot
 ```{r warning=FALSE, message = FALSE, fig.width = 12, fig.height= 8}
-
-
-# Create the individual plots with labels "A", "B", "C", "D"
 Fibre_syst_plot <- ggplot(selected_data, aes(x = FibreEnergy, y = Systolic)) +
   geom_point(color = "#FF7F0E", alpha = 0.5) +
   geom_smooth(method = "lm", se = FALSE, color = "#1F77B4", size = 1.5) +
@@ -515,19 +512,17 @@ carbo_dias_plot <- ggplot(selected_data, aes(x = CarbohydrateEnergy, y = Diastol
   theme(plot.title = element_text(hjust = 0.5)) +
   annotate("text", x = Inf, y = Inf, label = "D", hjust = 1.5, vjust = 1.5, size = 6, fontface = "bold")
 
-# Add explanation text at the bottom left of the grid
 explanation <- textGrob(
   label = "A. Scatter plot of Fibre Energy vs Systolic                 B. Scatter plot of Fibre Energy vs Diastolic\nC. Scatter plot of Carbohydrate Energy vs Systolic   D. Scatter plot of Carbohydrate Energy vs Diastolic",
   x = unit(0, "npc"), y = unit(0.1, "npc"), just = c("left", "bottom"),
   gp = gpar(fontsize = 12, fontface = "italic")
 )
 
-# Arrange the plots with a main title and the explanation text
 grid.arrange(
   arrangeGrob(
     Fibre_syst_plot, Fibre_dias_plot, carbo_syst_plot, carbo_dias_plot,
     nrow = 2,
-    top = textGrob("Figure 5: Relationship Between Energy Intake from Fibre and Carbohydrate and Blood Pressure", 
+    top = textGrob("Figure 1: Relationship Between Energy Intake from Fibre and Carbohydrate and Blood Pressure", 
                    gp = gpar(fontsize = 16))
   ),
   explanation,
@@ -558,7 +553,7 @@ correlation_table <- data.frame(
 correlation_table %>%
   gt() %>%
   tab_header(
-    title = "Table 8: Correlation Between Nutrient Energy Intake and Blood Pressure",
+    title = "Table 2: Correlation Between Nutrient Energy Intake and Blood Pressure",
     subtitle = "Correlation values for both Systolic and Diastolic Blood Pressure") %>%
   fmt_number(columns = c(Pearson_Correlation, Spearman_Correlation), decimals = 2)
 ```
@@ -584,7 +579,7 @@ correlation_table_mic_kendall <- data.frame(
 correlation_table_mic_kendall %>%
   gt() %>%
   tab_header(
-    title = "Table 9: Kendall's Tau and MIC Correlation between Nutrient Energy Intake and Blood Pressure") %>%
+    title = "Table 3: Kendall's Tau and MIC Correlation between Nutrient Energy Intake and Blood Pressure") %>%
   fmt_number(columns = c(Kendall_Correlation, MIC_Correlation), decimals = 3)
 ```
 
@@ -620,7 +615,7 @@ anova_results <- data.frame(
 anova_results %>%
   gt() %>%
   tab_header(
-    title = "Table 10: ANOVA Test Results: Nutrient Energy Intake vs Blood Pressure"
+    title = "Table 4: ANOVA Test Results: Nutrient Energy Intake vs Blood Pressure"
   ) %>%
   fmt_number(columns = c(F_Statistic, P_Value), decimals = 3) %>%
   cols_label(
@@ -728,13 +723,12 @@ mean_systolic_robust_r2 <- mean(robust_r2_systolic)
 
 ```{r model performance[Systolic](Figure6), fig.width=10}
 Systolic_df <- data.frame(
-    Model = c("GAM", "Multiple Linear Regression", "Robust"),
+    Model = c("GAM", "Multiple Linear", "Robust"),
     RMSE = c(mean_systolic_gam_rmse, mean_systolic_mlr_rmse, mean_systolic_robust_rmse),
     MAE = c(mean_systolic_gam_mae, mean_systolic_mlr_mae, mean_systolic_robust_mae),
     R2 = c(mean_systolic_gam_r2, mean_systolic_mlr_r2, mean_systolic_robust_r2)
 )
 
-# Define custom colors for the bar plots
 colors <- c('#FF5179', '#BF59D9', '#E76BF3')
 
 rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
@@ -768,50 +762,24 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar',
 SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 6: Model Comparison (Systolic)",
-      font = list(size = 16), # Slightly larger title font
-      x = 0.5,
-      y = 1.15  # Move the title further from the subplots
-    ),
+      text = "Figure 2: Model Comparison (Systolic)",
+      font = list(size = 16),x = 0.5, y = 1.15),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
-      list(
-        text = "A",
-        x = 0, # Position it to the left of the first subplot
-        y = 1.05,
-        xref = "paper",
-        yref = "paper",
-        showarrow = FALSE,
-        font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # "B" label to the left of MAE subplot, near y-axis
-      list(
-        text = "B",
-        x = 0.35, # Position it to the left of the second subplot
-        y = 1.05,
-        xref = "paper",
-        yref = "paper",
-        showarrow = FALSE,
-        font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # "C" label to the left of R² subplot, near y-axis
+      list(text = "A",x = 0, y = 1.05, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14, color = "black"), xanchor = "center"),
+      list(text = "B", x = 0.35, y = 1.05, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14, color = "black"), xanchor = "center"),
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.05,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
         font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # Captions grouped together at the bottom-left
+        xanchor = "center"),
       list(
-        text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
-        y = -0.4,
+        text = "A. RMSE comparison for Generalized Additive Model, Multiple Linear Regression and Robust Regression",
+        x = 0,
+        y = -0.15,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -819,9 +787,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         xanchor = "left"
       ),
       list(
-        text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.45, # Slightly lower for spacing
+        text = "B. MAE comparison for Generalized Additive Model, Multiple Linear Regression and Robust Regression",
+        x = 0,
+        y = -0.2,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -829,9 +797,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         xanchor = "left"
       ),
       list(
-        text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.5, # Slightly lower for spacing
+        text = "C. R² comparison for Generalized Additive Model, Multiple Linear Regression and Robust Regression",
+        x = 0,
+        y = -0.25,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -839,7 +807,7 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         xanchor = "left"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 SystolicFig
@@ -930,7 +898,7 @@ mean_diastolic_robust_r2 <- mean(robust_r2_diastolic)
 
 ```{r model performance[Diastolic](Figure7),fig.width=10}
 Diastolic_df <- data.frame(
-    Model = c("GAM", "Polynomial", "Robust"),
+    Model = c("GAM", "Multiple Linear", "Robust"),
     RMSE = c(mean_diastolic_gam_rmse, mean_diastolic_mlr_rmse, mean_diastolic_robust_rmse),
     MAE = c(mean_diastolic_gam_mae, mean_diastolic_mlr_mae, mean_diastolic_robust_mae),
     R2 = c(mean_diastolic_gam_r2, mean_diastolic_mlr_r2, mean_diastolic_robust_r2)
@@ -975,50 +943,24 @@ DiastolicFig <- subplot(
 ) %>%
   layout(
     title = list(
-      text = "Figure 7: Model Comparison (Diastolic)",
-      font = list(size = 16), # Slightly larger title font
-      x = 0.5,
-      y = 1.15  # Move the title further from the subplots
-    ),
+      text = "Figure 3: Model Comparison (Diastolic)",
+      font = list(size = 16),x = 0.5, y = 1.15),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
-      list(
-        text = "A",
-        x = 0, # Position it to the left of the first subplot
-        y = 1.05,
-        xref = "paper",
-        yref = "paper",
-        showarrow = FALSE,
-        font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # "B" label to the left of MAE subplot, near y-axis
-      list(
-        text = "B",
-        x = 0.35, # Position it to the left of the second subplot
-        y = 1.05,
-        xref = "paper",
-        yref = "paper",
-        showarrow = FALSE,
-        font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # "C" label to the left of R² subplot, near y-axis
+      list(text = "A",x = 0, y = 1.05, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14, color = "black"), xanchor = "center"),
+      list(text = "B", x = 0.35, y = 1.05, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14, color = "black"), xanchor = "center"),
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.05,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
         font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # Captions grouped together at the bottom-left
+        xanchor = "center"),
       list(
-        text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
-        y = -0.4,
+        text = "A. RMSE comparison for Generalized Additive Model, Multiple Linear Regression and Robust Regression",
+        x = 0,
+        y = -0.15,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1026,9 +968,9 @@ DiastolicFig <- subplot(
         xanchor = "left"
       ),
       list(
-        text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.45, # Slightly lower for spacing
+        text = "B. MAE comparison for Generalized Additive Model, Multiple Linear Regression and Robust Regression",
+        x = 0,
+        y = -0.2,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1036,9 +978,9 @@ DiastolicFig <- subplot(
         xanchor = "left"
       ),
       list(
-        text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.5, # Slightly lower for spacing
+        text = "C. R² comparison for Generalized Additive Model, Multiple Linear Regression and Robust Regression",
+        x = 0,
+        y = -0.25,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1046,14 +988,14 @@ DiastolicFig <- subplot(
         xanchor = "left"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 DiastolicFig
 ```
 
 # Full model vs Reduced model
-```{r}
+```{r full model reduced model cv[Systolic]}
 set.seed(3888)
 k <- 5
 repeats <- 3
@@ -1119,16 +1061,13 @@ mean_systolic_gam_reduced_mae <- mean(gam_reduced_mae_systolic)
 mean_systolic_gam_reduced_r2 <- mean(gam_reduced_r2_systolic)
 ```
 
-```{r}
+```{r plot[Systolic]}
 Systolic_df <- data.frame(
     Model = c("GAM Full", "GAM Reduced"),
     RMSE = c(mean_systolic_gam_full_rmse, mean_systolic_gam_reduced_rmse),
     MAE = c(mean_systolic_gam_full_mae, mean_systolic_gam_reduced_mae),
     R2 = c(mean_systolic_gam_full_r2, mean_systolic_gam_reduced_r2)
 )
-
-# Define custom colors for the bar plots
-colors <- c('#F8766D', '#A3A500')
 
 rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
 mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
@@ -1158,19 +1097,18 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar',
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE, titleX = TRUE) %>%
+SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 8: Model Comparison (Systolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 4: GAM Full Model* and Reduced Model** Comparison (Systolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
       list(
         text = "A",
-        x = 0, # Position it to the left of the first subplot
+        x = 0,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1178,10 +1116,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "B" label to the left of MAE subplot, near y-axis
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1189,10 +1126,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1200,11 +1136,10 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
-        text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
-        y = -0.4,
+        text = "A. RMSE comparison for Generalized Additive Model Full Model* and Reduced Model** Comparison (Systolic)",
+        x = 0,
+        y = -0.15,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1212,9 +1147,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         xanchor = "left"
       ),
       list(
-        text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.45, # Slightly lower for spacing
+        text = "B. MAE comparison for Generalized Additive Model Full Model* and Reduced Model** Comparison (Systolic)",
+        x = 0,
+        y = -0.2, 
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1222,17 +1157,35 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         xanchor = "left"
       ),
       list(
-        text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.5, # Slightly lower for spacing
+        text = "C. R² comparison for Generalized Additive Model Full Model* and Reduced Model** Comparison (Systolic)",
+        x = 0,
+        y = -0.25,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
         font = list(size = 12),
+        xanchor = "left"
+      ), list(
+        text = "*Full Model: Model with all risk factors and carb and fiber",
+        x = 0,
+        y = -0.3,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 10),
+        xanchor = "left"
+      ), list(
+        text = "**Reduced Model: Model with only risk factors",
+        x = 0,
+        y = -0.35,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 10),
         xanchor = "left"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 SystolicFig
@@ -1312,9 +1265,6 @@ Diastolic_df <- data.frame(
     R2 = c(mean_diastolic_gam_full_r2, mean_diastolic_gam_reduced_r2)
 )
 
-# Define custom colors for the bar plots
-colors <- c('#F8766D', '#A3A500')
-
 rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
 mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
 r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
@@ -1343,19 +1293,18 @@ Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE, titleX = TRUE) %>%
+DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Diastolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 5: GAM Full Model* and Reduced Model** Comparison (Diastolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
       list(
         text = "A",
-        x = 0, # Position it to the left of the first subplot
+        x = 0,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1363,10 +1312,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "B" label to the left of MAE subplot, near y-axis
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1374,10 +1322,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70, 
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1385,10 +1332,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
-        text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
+        text = "A. RMSE comparison for Generalized Additive Model Full Model* and Reduced Model** Comparison (Diastolic)",
+        x = 0,
         y = -0.4,
         xref = "paper",
         yref = "paper",
@@ -1397,9 +1343,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         xanchor = "left"
       ),
       list(
-        text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.45, # Slightly lower for spacing
+        text = "B. MAE comparison for Generalized Additive Model Full Model* and Reduced Model** Comparison (Diastolic)",
+        x = 0,
+        y = -0.45,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1407,17 +1353,35 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         xanchor = "left"
       ),
       list(
-        text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.5, # Slightly lower for spacing
+        text = "C. R² comparison for Generalized Additive Model Full Model* and Reduced Model** Comparison (Diastolic)",
+        x = 0,
+        y = -0.5,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
         font = list(size = 12),
         xanchor = "left"
+      ), list(
+        text = "*Full Model: Model with all risk factors and carb and fiber",
+        x = 0,
+        y = -0.3,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 10),
+        xanchor = "left"
+      ), list(
+        text = "**Reduced Model: Model with only risk factors",
+        x = 0,
+        y = -0.35,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 10),
+        xanchor = "left"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 DiastolicFig
@@ -1432,36 +1396,24 @@ gam_full_model_S <- gam(Systolic ~ s(Age) + s(BMI) + SocialStatus + Gender + Smo
 gam_reduced_model_S <- gam(Systolic ~ s(Age) + s(BMI) + SocialStatus + Gender + SmokeStatus +
                        s(AlcoholPercentage) + Identity + s(SodiumPotassiumRatio), data = normalized_data)
 
-
-plot(gam_full_model_S,se = TRUE)
-plot(gam_reduced_model_S,se = TRUE)
-```
-```{r}
-# Extract key information from the model summaries
 full_model_summary <- summary(gam_full_model_S)
 reduced_model_summary <- summary(gam_reduced_model_S)
 
-# Check and extract R-squared
 full_model_rsq <- full_model_summary$r.sq
 reduced_model_rsq <- reduced_model_summary$r.sq
 
-# Check and extract Deviance Explained
 full_model_dev_expl <- full_model_summary$dev.expl
 reduced_model_dev_expl <- reduced_model_summary$dev.expl
 
-# Check and extract GCV
 full_model_gcv <- full_model_summary$sp.criterion[1]
 reduced_model_gcv <- reduced_model_summary$sp.criterion[1]
 
-# Extract parametric terms for both models
 full_model_params <- full_model_summary$p.table
 reduced_model_params <- reduced_model_summary$p.table
 
-# Extract smooth terms for both models
 full_model_smooth <- full_model_summary$s.table
 reduced_model_smooth <- reduced_model_summary$s.table
 
-# Combine parametric and smooth terms into a dataframe for both models
 parametric_full <- data.frame(
   Term = rownames(full_model_params),
   Estimate = full_model_params[, 1],
@@ -1498,7 +1450,6 @@ smooth_reduced <- data.frame(
   Model = "Reduced Model"
 )
 
-# Add missing columns to parametric and smooth dataframes
 parametric_full$EDF <- NA
 parametric_full$Ref_DF <- NA
 parametric_full$F_Statistic <- NA
@@ -1515,20 +1466,16 @@ smooth_reduced$Estimate <- NA
 smooth_reduced$Std_Error <- NA
 smooth_reduced$T_Value <- NA
 
-# Standardize the column order
 parametric_full <- parametric_full[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
 parametric_reduced <- parametric_reduced[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
 smooth_full <- smooth_full[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
 smooth_reduced <- smooth_reduced[, c("Term", "Estimate", "Std_Error", "T_Value", "P_Value", "EDF", "Ref_DF", "F_Statistic", "Model")]
 
-# Combine parametric and smooth terms into one dataframe
 model_results <- rbind(parametric_full, parametric_reduced, smooth_full, smooth_reduced)
 
-# Create separate dataframes for full model and reduced model
 full_model_results <- model_results[model_results$Model == "Full Model", ]
 reduced_model_results <- model_results[model_results$Model == "Reduced Model", ]
 
-# Create the summary table for the Full Model
 full_model_results %>%
   gt() %>%
   tab_header(
@@ -1550,7 +1497,6 @@ full_model_results %>%
     heading.align = "center"
   )
 
-# Create the summary table for the Reduced Model
 reduced_model_results %>%
   gt() %>%
   tab_header(
@@ -1698,8 +1644,6 @@ Systolic_df <- data.frame(
     R2 = c(gam_r2_diastolic_ag1, gam_r2_diastolic_ag2, gam_r2_diastolic_ag3)
 )
 
-colors <- c('#FF5179', '#BF59D9', '#E76BF3')
-
 rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
 mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
 r2_range <- c(min(Systolic_df$R2) * 0.95, max(Systolic_df$R2) * 1.05)
@@ -1731,16 +1675,15 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar',
 AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Systolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 6: Different Age Group GAM Comparison (Systolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
       list(
         text = "A",
-        x = 0, # Position it to the left of the first subplot
+        x = 0,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1748,10 +1691,9 @@ AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, s
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "B" label to the left of MAE subplot, near y-axis
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1759,10 +1701,9 @@ AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, s
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1770,11 +1711,10 @@ AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, s
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
-        text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
-        y = -0.4,
+        text = "A. RMSE comparison for Generalized Additive Model",
+        x = 0,
+        y = -0.2,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1782,9 +1722,9 @@ AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, s
         xanchor = "left"
       ),
       list(
-        text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.45, # Slightly lower for spacing
+        text = "B. MAE comparison for Generalized Additive Model",
+        x = 0,
+        y = -0.25,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1792,17 +1732,25 @@ AgeSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, s
         xanchor = "left"
       ),
       list(
-        text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.5, # Slightly lower for spacing
+        text = "C. R² comparison for Generalized Additive Model",
+        x = 0,
+        y = -0.3,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
         font = list(size = 12),
         xanchor = "left"
+      ),list(
+        text = "Age Groups",
+        y = -0.15,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "center"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 AgeSystolicFig
@@ -1838,8 +1786,6 @@ Diastolic_df <- data.frame(
     R2 = c(gam_r2_diastolic_ag1, gam_r2_diastolic_ag2, gam_r2_diastolic_ag3)
 )
 
-colors <- c('#FF5179', '#BF59D9', '#E76BF3')
-
 rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
 mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
 r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
@@ -1874,16 +1820,15 @@ Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Model, y = ~round(R2, 3), type = 'bar
 DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Diastolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 7: Different Age Group GAM Comparison (Diastolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
       list(
         text = "A",
-        x = 0, # Position it to the left of the first subplot
+        x = 0,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1891,10 +1836,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "B" label to the left of MAE subplot, near y-axis
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1902,10 +1846,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -1913,11 +1856,10 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
-        text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
-        y = -0.4,
+        text = "A. RMSE comparison for Generalized Additive Model",
+        x = 0,
+        y = -0.2,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1925,9 +1867,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         xanchor = "left"
       ),
       list(
-        text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.45, # Slightly lower for spacing
+        text = "B. MAE comparison for Generalized Additive Model",
+        x = 0,
+        y = -0.25,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -1935,17 +1877,25 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         xanchor = "left"
       ),
       list(
-        text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.5, # Slightly lower for spacing
+        text = "C. R² comparison for Generalized Additive Model",
+        x = 0,
+        y = -0.3,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
         font = list(size = 12),
         xanchor = "left"
+      ),list(
+        text = "Age Groups",
+        y = -0.15,
+        xref = "paper",
+        yref = "paper",
+        showarrow = FALSE,
+        font = list(size = 12),
+        xanchor = "center"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 DiastolicFig
@@ -1966,31 +1916,43 @@ age_model_6 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = ag
 
 #### FibreEnergy
 ```{r age Fibreenergy(Figure10), fig.width= 12, fig.height=14}
-par(mfrow = c(3, 2))
+par(mfrow = c(3, 2), oma = c(7, 0, 2, 0))
 
 Fibre_color <- "blue"
 
-plot(age_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 10.1 18-34 Group - Systolic - FibreEnergy")
-plot(age_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 10.4 18-34 Group - Diastolic - FibreEnergy")
-plot(age_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 10.2 35-64 Group - Systolic - FibreEnergy")
-plot(age_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 10.5 35-64 Group - Diastolic - FibreEnergy")
-plot(age_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 10.3 65-85 Group - Systolic - FibreEnergy")
-plot(age_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 10.6 65-85 Group - Diastolic - FibreEnergy")
+plot_labels <- c("A", "B", "C", "D", "E", "F")
+
+plot(age_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[1]))
+plot(age_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[2]))
+plot(age_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[3]))
+plot(age_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[4]))
+plot(age_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[5]))
+plot(age_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[6]))
+
+mtext("Figure 8: Relationship between FibreEnergy and Blood Pressure by Age Group", outer = TRUE, cex = 1.2)
+
+mtext("A. 18-34 Age Group - Systolic - Fibreenergy\nB. 18-34 Age Group - Diastolic - Fibreenergy\nC. 35-64 Age Group - Systolic - Fibreenergy\nD. 35-64 Age Group - Diastolic - Fibreenergy\nE. 65-85 Age Group - Systolic - Fibreenergy\nF. 65-85 Age Group - Diastolic - Fibreenergy", side = 1, adj = 0.05, line = 5, outer = TRUE, cex = 0.7)
 
 par(mfrow = c(1, 1))
 ```
 
 #### CarbohydrateEnergy
 ```{r age carbohydrateenergy(Figure11), fig.width= 12, fig.height=14}
-par(mfrow = c(3, 2))
+par(mfrow = c(3, 2), oma = c(7, 0, 2, 0))
+
 carb_color <- "red"
 
-plot(age_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 11.1 18-34 Group - Systolic - CarbohydrateEnergy")
-plot(age_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 11.2 18-34 Group - Diastolic - CarbohydrateEnergy")
-plot(age_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 11.3 35-64 Group - Systolic - CarbohydrateEnergy")
-plot(age_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 11.4 35-64 Group - Diastolic - CarbohydrateEnergy")
-plot(age_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 11.5 65-85 Group - Systolic - CarbohydrateEnergy")
-plot(age_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 11.6 65-85 Group - Diastolic - CarbohydrateEnergy")
+plot(age_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "A")
+plot(age_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "B")
+plot(age_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "C")
+plot(age_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "D")
+plot(age_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "E")
+plot(age_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "F")
+
+mtext("Figure 9: Relationship between FibreEnergy and Blood Pressure by Age Group", outer = TRUE, cex = 1.2)
+
+mtext("A. 18-34 Age Group - Systolic - CarbohydrateEnergy\nB. 18-24 Age Group - Diastolic - CarbohydrateEnergy\nC. 36-64 Age Group - Systolic - CarbohydrateEnergy\nD. 35-64 Age Group - Diastolic - CarbohydrateEnergy\nE. 65-85 Age Group - Systolic - CarbohydrateEnergy\nF. 65-85 Age Group - Diastolic - CarbohydrateEnergy", side = 1, adj = 0.05, line = 5, outer = TRUE, cex = 0.7)
+
 par(mfrow = c(1, 1))
 ```
 
@@ -1998,9 +1960,7 @@ par(mfrow = c(1, 1))
 ### Group
 ```{r bmi group}
 light <- selected_data %>% filter(BMI < 24.9)
-
 normal <- selected_data %>% filter(BMI >= 24.9 & BMI <= 29.9)
-
 heavy <- selected_data %>% filter(BMI > 29.9)
 ```
 
@@ -2031,8 +1991,6 @@ Systolic_df <- data.frame(
     MAE = c(gam_mae_systolic_light, gam_mae_systolic_normal, gam_mae_systolic_heavy),
     R2 = c(gam_r2_systolic_light, gam_r2_systolic_normal, gam_r2_systolic_heavy)
 )
-
-colors <- c('#FF5179', '#BF59D9', '#E76BF3')
 
 rmse_range <- c(min(Systolic_df$RMSE) * 0.95, max(Systolic_df$RMSE) * 1.05)
 mae_range <- c(min(Systolic_df$MAE) * 0.95, max(Systolic_df$MAE) * 1.05)
@@ -2065,16 +2023,15 @@ Systolic_r2 <- plot_ly(Systolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar',
 SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Systolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 10: Differen BMI Group GAM Comparison (Systolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
       list(
         text = "A",
-        x = 0, # Position it to the left of the first subplot
+        x = 0,
         y = 1.10,
         xref = "paper",
         yref = "paper",
@@ -2082,10 +2039,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "B" label to the left of MAE subplot, near y-axis
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.10,
         xref = "paper",
         yref = "paper",
@@ -2093,10 +2049,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.10,
         xref = "paper",
         yref = "paper",
@@ -2104,10 +2059,9 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
         text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
+        x = 0,
         y = -0.30,
         xref = "paper",
         yref = "paper",
@@ -2117,8 +2071,8 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
       ),
       list(
         text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.35, # Slightly lower for spacing
+        x = 0,
+        y = -0.35,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -2127,8 +2081,8 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
       ),
       list(
         text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.40, # Slightly lower for spacing
+        x = 0,
+        y = -0.40,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -2136,7 +2090,7 @@ SystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shar
         xanchor = "left"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 
 SystolicFig
@@ -2170,8 +2124,6 @@ Diastolic_df <- data.frame(
     R2 = c(gam_r2_diastolic_light, gam_r2_diastolic_normal, gam_r2_diastolic_heavy)
 )
 
-colors <- c('#FF5179', '#BF59D9', '#E76BF3')
-
 rmse_range <- c(min(Diastolic_df$RMSE) * 0.95, max(Diastolic_df$RMSE) * 1.05)
 mae_range <- c(min(Diastolic_df$MAE) * 0.95, max(Diastolic_df$MAE) * 1.05)
 r2_range <- c(min(Diastolic_df$R2) * 0.95, max(Diastolic_df$R2) * 1.05)
@@ -2203,16 +2155,15 @@ Diastolic_r2 <- plot_ly(Diastolic_df, x = ~Group, y = ~round(R2, 3), type = 'bar
 DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Diastolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 11: Model Comparison (Diastolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
       list(
         text = "A",
-        x = 0, # Position it to the left of the first subplot
+        x = 0,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -2220,10 +2171,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "B" label to the left of MAE subplot, near y-axis
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -2231,10 +2181,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.05,
         xref = "paper",
         yref = "paper",
@@ -2242,7 +2191,6 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
         text = "A. RMSE comparison for models",
         x = 0, # Align to the far left
@@ -2294,31 +2242,37 @@ bmi_model_6 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = he
 
 #### FibreEnergy
 ```{r age Fibreenergy(Figure14), fig.width= 12, fig.height=14}
-par(mfrow = c(3, 2))
+par(mfrow = c(3, 2), oma = c(7, 0, 2, 0))
 
-Fibre_color <- "blue"
+plot(bmi_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "A")
+plot(bmi_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "B")
+plot(bmi_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "C")
+plot(bmi_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "D")
+plot(bmi_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "E")
+plot(bmi_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "F")
 
-plot(bmi_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 14.1 Low BMI Group - Systolic - FibreEnergy")
-plot(bmi_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 14.4 Low BMI Group - Diastolic - FibreEnergy")
-plot(bmi_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 14.2 Normal BMI Group - Systolic - FibreEnergy")
-plot(bmi_model_5, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 14.5 Normal BMI Group - Diastolic - FibreEnergy")
-plot(bmi_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 14.3 High BMI Group - Systolic - FibreEnergy")
-plot(bmi_model_6, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 14.6 High BMI Group - Diastolic - FibreEnergy")
+mtext("Figure 12: Relationship between FibreEnergy and Blood Pressure by BMI Group", outer = TRUE, cex = 1.2)
+
+mtext("A. 16-24.9 BMI Group - Systolic - FibreEnergy\nB. 16-24.9 BMI Group - Diastolic - FibreEnergy\nC. 24.9-29.9 BMI Group - Systolic - FibreEnergy\nD. 24.9-29.9 BMI Group - Diastolic - FibreEnergy\nE. 29.9-47.5 BMI Group - Systolic - FibreEnergy\nF. 29.9-47.5 BMI Group - Diastolic - FibreEnergy",side = 1, adj = 0.05, line = 5, outer = TRUE, cex = 0.7)
 
 par(mfrow = c(1, 1))
 ```
 
 #### CarbohydrateEnergy
 ```{r age carbohydrateenergy(Figure15), fig.width= 12, fig.height=14}
-par(mfrow = c(3, 2))
-carb_color <- "red"
+par(mfrow = c(3, 2), oma = c(7, 0, 2, 0))
 
-plot(bmi_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 15.1 Low BMI Group - Systolic - CarbohydrateEnergy")
-plot(bmi_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 15.2 Low BMI Group - Diastolic - CarbohydrateEnergy")
-plot(bmi_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 15.3 Normal BMI Group - Systolic - CarbohydrateEnergy")
-plot(bmi_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 15.4 Normal BMI Group - Diastolic - CarbohydrateEnergy")
-plot(bmi_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 15.5 High BMI Group - Systolic - CarbohydrateEnergy")
-plot(bmi_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 15.6 High BMI Group - Diastolic - CarbohydrateEnergy")
+plot(bmi_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "A")
+plot(bmi_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "B")
+plot(bmi_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "C")
+plot(bmi_model_5, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "D")
+plot(bmi_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "E")
+plot(bmi_model_6, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "F")
+
+mtext("Figure 13: Relationship between CarbohydrateEnergy and Blood Pressure by BMI Group", outer = TRUE, cex = 1.2)
+
+mtext("A. 16-24.9 BMI Group - Systolic - CarbohydrateEnergy\nB. 16-24.9 BMI Group - Diastolic - CarbohydrateEnergy\nC. 24.9-29.9 BMI Group - Systolic - CarbohydrateEnergy\nD. 24.9-29.9 BMI Group - Diastolic - CarbohydrateEnergy\nE. 29.9-47.5 BMI Group - Systolic - CarbohydrateEnergy\nF. 29.9-47.5 BMI Group - Diastolic - CarbohydrateEnergy", side = 1, adj = 0.05, line = 5, outer = TRUE, cex = 0.7)
+
 par(mfrow = c(1, 1))
 ```
 
@@ -2354,13 +2308,11 @@ Systolic_alcohol_df <- data.frame(
     R2 = c(gam_r2_systolic_nonalcohol, gam_r2_systolic_alcohol)
 )
 
-colors_alcohol <- c('#FF5179', '#BF59D9')
-
 rmse_range_alcohol <- c(min(Systolic_alcohol_df$RMSE) * 0.95, max(Systolic_alcohol_df$RMSE) * 1.05)
 mae_range_alcohol <- c(min(Systolic_alcohol_df$MAE) * 0.95, max(Systolic_alcohol_df$MAE) * 1.05)
 r2_range_alcohol <- c(min(Systolic_alcohol_df$R2) * 0.95, max(Systolic_alcohol_df$R2) * 1.05)
 
-Systolic_rmse_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+Systolic_rmse_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors,
                text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
     yaxis = list(title = 'RMSE', range = rmse_range_alcohol),
@@ -2368,7 +2320,7 @@ Systolic_rmse_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(RMS
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-Systolic_mae_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+Systolic_mae_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors,
                text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
     yaxis = list(title = 'MAE', range = mae_range_alcohol),
@@ -2376,7 +2328,7 @@ Systolic_mae_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(MAE,
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-Systolic_r2_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+Systolic_r2_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors,
                text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
     yaxis = list(title = 'R²', range = r2_range_alcohol),
@@ -2387,7 +2339,7 @@ Systolic_r2_alcohol <- plot_ly(Systolic_alcohol_df, x = ~Group, y = ~round(R2, 3
 SystolicFig_alcohol <- subplot(Systolic_rmse_alcohol, Systolic_mae_alcohol, Systolic_r2_alcohol, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Systolic)",
+      text = "Figure 14: Alcohol Group Model Comparison (Systolic)",
       font = list(size = 16), # Slightly larger title font
       x = 0.5,
       y = 1.15  # Move the title further from the subplots
@@ -2487,13 +2439,11 @@ Diastolic_alcohol_df <- data.frame(
     R2 = c(gam_r2_diastolic_nonalcohol, gam_r2_diastolic_alcohol)
 )
 
-colors_alcohol <- c('#FF5179', '#BF59D9')
-
 rmse_range_alcohol <- c(min(Diastolic_alcohol_df$RMSE) * 0.95, max(Diastolic_alcohol_df$RMSE) * 1.05)
 mae_range_alcohol <- c(min(Diastolic_alcohol_df$MAE) * 0.95, max(Diastolic_alcohol_df$MAE) * 1.05)
 r2_range_alcohol <- c(min(Diastolic_alcohol_df$R2) * 0.95, max(Diastolic_alcohol_df$R2) * 1.05)
 
-Diastolic_rmse_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+Diastolic_rmse_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(RMSE, 3), type = 'bar', color = ~Group, colors = colors,
                text = ~round(RMSE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
     yaxis = list(title = 'RMSE', range = rmse_range_alcohol),
@@ -2501,7 +2451,7 @@ Diastolic_rmse_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(R
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-Diastolic_mae_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+Diastolic_mae_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(MAE, 3), type = 'bar', color = ~Group, colors = colors,
                text = ~round(MAE, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
     yaxis = list(title = 'MAE', range = mae_range_alcohol),
@@ -2509,7 +2459,7 @@ Diastolic_mae_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(MA
     paper_bgcolor = 'rgba(245, 246, 249, 1)',
     plot_bgcolor = 'rgba(0, 0, 0, 0)')
 
-Diastolic_r2_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors_alcohol,
+Diastolic_r2_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(R2, 3), type = 'bar', color = ~Group, colors = colors,
                text = ~round(R2, 3), textposition = 'outside', textfont = list(color = 'black')) %>%
   layout(
     yaxis = list(title = 'R²', range = r2_range_alcohol),
@@ -2520,7 +2470,7 @@ Diastolic_r2_alcohol <- plot_ly(Diastolic_alcohol_df, x = ~Group, y = ~round(R2,
 DiastolicFig_alcohol <- subplot(Diastolic_rmse_alcohol, Diastolic_mae_alcohol, Diastolic_r2_alcohol, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Diastolic)",
+      text = "Figure 15: Model Comparison (Diastolic)",
       font = list(size = 16), # Slightly larger title font
       x = 0.5,
       y = 1.15  # Move the title further from the subplots
@@ -2607,28 +2557,40 @@ alc_model_4 <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data = al
 ```
 
 #### FibreEnergy
-```{r alcohol Fibreenergy(Figure18), fig.width= 12, fig.height=8}
-par(mfrow = c(2, 2))
+```{r alcohol Fibreenergy, fig.width= 12, fig.height=10}
+par(mfrow = c(2, 2), oma = c(4, 0, 2, 0))
 
-Fibre_color <- "blue"
 
-plot(alc_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 18.1 non-alcohol Group - Systolic - FibreEnergy")
-plot(alc_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 18.4 non-alcohol Group - Diastolic - FibreEnergy")
-plot(alc_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 18.2 alcohol Group - Systolic - FibreEnergy")
-plot(alc_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 18.5 alcohol Group - Diastolic - FibreEnergy")
+plot_labels <- c("A", "B", "C", "D")
+
+plot(alc_model_1, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[1]))
+plot(alc_model_3, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[2]))
+plot(alc_model_2, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[3]))
+plot(alc_model_4, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[4]))
+
+mtext("Figure 16: Relationship between FibreEnergy and Blood Pressure by Alcohol Group", outer = TRUE, cex = 1.2)
+
+mtext("A. Non-alcohol Group - Systolic - FibreEnergy\nB. Non-alcohol Group - Diastolic - FibreEnergy\nC. Alcohol Group - Systolic - FibreEnergy\nD. Alcohol Group - Diastolic - FibreEnergy", side = 1, adj = 0.05, line = 2, outer = TRUE, cex = 0.7)
 
 par(mfrow = c(1, 1))
 ```
 
 #### CarbohydrateEnergy
-```{r alcohol carbohydrateenergy(Figure19), fig.width= 12, fig.height=8}
-par(mfrow = c(2, 2))
-carb_color <- "red"
+```{r alcohol carbohydrateenergy, fig.width= 12, fig.height=10}
+par(mfrow = c(2, 2), oma = c(4, 0, 2, 0))
 
-plot(alc_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 19.1 non-alcohol Group - Systolic - CarbohydrateEnergy")
-plot(alc_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 19.2 non-alcohol Group - Diastolic - CarbohydrateEnergy")
-plot(alc_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 19.3 alcohol Group - Systolic - CarbohydrateEnergy")
-plot(alc_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 19.4 alcohol Group - Diastolic - CarbohydrateEnergy")
+
+plot_labels <- c("A", "B", "C", "D")
+
+plot(alc_model_1, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[1]))
+plot(alc_model_3, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[2]))
+plot(alc_model_2, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[3]))
+plot(alc_model_4, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[4]))
+
+mtext("Figure 17: Relationship between CarbohydrateEnergy and Blood Pressure by Alcohol Group", outer = TRUE, cex = 1.2)
+
+mtext("A. Non-alcohol Group - Systolic - CarbohydrateEnergy\nB. Non-alcohol Group - Diastolic - CarbohydrateEnergy\nC. Alcohol Group - Systolic - CarbohydrateEnergy\nD. Alcohol Group - Diastolic - CarbohydrateEnergy", side = 1, adj = 0.05, line = 2, outer = TRUE, cex = 0.7)
+
 par(mfrow = c(1, 1))
 ```
 
@@ -2664,8 +2626,6 @@ Systolic_gender_df <- data.frame(
     R2 = c(gam_r2_diastolic_male, gam_r2_diastolic_female)
 )
 
-colors <- c('#FF5179', '#BF59D9')
-
 rmse_range <- c(min(Systolic_gender_df$RMSE) * 0.95, max(Systolic_gender_df$RMSE) * 1.05)
 mae_range <- c(min(Systolic_gender_df$MAE) * 0.95, max(Systolic_gender_df$MAE) * 1.05)
 r2_range <- c(min(Systolic_gender_df$R2) * 0.95, max(Systolic_gender_df$R2) * 1.05)
@@ -2697,7 +2657,7 @@ Systolic_r2 <- plot_ly(Systolic_gender_df, x = ~Model, y = ~round(R2, 3), type =
 GenderSystolicFig <- subplot(Systolic_rmse, Systolic_mae, Systolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Systolic)",
+      text = "Figure 18: Gender Group Model Comparison (Systolic)",
       font = list(size = 16), # Slightly larger title font
       x = 0.5,
       y = 1.15  # Move the title further from the subplots
@@ -2799,8 +2759,6 @@ Diastolic_gender_df <- data.frame(
     R2 = c(gam_r2_diastolic_male, gam_r2_diastolic_female)
 )
 
-colors <- c('#FF5179', '#BF59D9')
-
 rmse_range <- c(min(Diastolic_gender_df$RMSE) * 0.95, max(Diastolic_gender_df$RMSE) * 1.05)
 mae_range <- c(min(Diastolic_gender_df$MAE) * 0.95, max(Diastolic_gender_df$MAE) * 1.05)
 r2_range <- c(min(Diastolic_gender_df$R2) * 0.95, max(Diastolic_gender_df$R2) * 1.05)
@@ -2835,27 +2793,16 @@ Diastolic_r2 <- plot_ly(Diastolic_gender_df, x = ~Model, y = ~round(R2, 3), type
 DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, shareY = FALSE) %>%
   layout(
     title = list(
-      text = "Figure 9: Model Comparison (Diastolic)",
-      font = list(size = 16), # Slightly larger title font
+      text = "Figure 19: Gender Group Model Comparison (Diastolic)",
+      font = list(size = 16),
       x = 0.5,
-      y = 1.15  # Move the title further from the subplots
+      y = 1.15
     ),
     annotations = list(
-      # "A" label to the left of RMSE subplot, near y-axis
-      list(
-        text = "A",
-        x = 0, # Position it to the left of the first subplot
-        y = 1.1,
-        xref = "paper",
-        yref = "paper",
-        showarrow = FALSE,
-        font = list(size = 14, color = "black"),
-        xanchor = "center"
-      ),
-      # "B" label to the left of MAE subplot, near y-axis
+      list(text = "A", x = 0, y = 1.1, xref = "paper", yref = "paper", showarrow = FALSE, font = list(size = 14, color = "black"), xanchor = "center"),
       list(
         text = "B",
-        x = 0.35, # Position it to the left of the second subplot
+        x = 0.35,
         y = 1.1,
         xref = "paper",
         yref = "paper",
@@ -2863,10 +2810,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # "C" label to the left of R² subplot, near y-axis
       list(
         text = "C",
-        x = 0.70, # Position it to the left of the third subplot
+        x = 0.70,
         y = 1.1,
         xref = "paper",
         yref = "paper",
@@ -2874,10 +2820,9 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         font = list(size = 14, color = "black"),
         xanchor = "center"
       ),
-      # Captions grouped together at the bottom-left
       list(
         text = "A. RMSE comparison for models",
-        x = 0, # Align to the far left
+        x = 0,
         y = -0.3,
         xref = "paper",
         yref = "paper",
@@ -2887,8 +2832,8 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
       ),
       list(
         text = "B. MAE comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.35, # Slightly lower for spacing
+        x = 0,
+        y = -0.35,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -2897,8 +2842,8 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
       ),
       list(
         text = "C. R² comparison for models",
-        x = 0, # Same x as the first caption
-        y = -0.40, # Slightly lower for spacing
+        x = 0,
+        y = -0.40,
         xref = "paper",
         yref = "paper",
         showarrow = FALSE,
@@ -2906,7 +2851,7 @@ DiastolicFig <- subplot(Diastolic_rmse, Diastolic_mae, Diastolic_r2, nrows = 1, 
         xanchor = "left"
       )
     ),
-    margin = list(b = 140, t = 80) # Adjust margins as needed
+    margin = list(b = 140, t = 80)
   )
 DiastolicFig
 ```
@@ -2922,28 +2867,40 @@ diastolic_female <- gam(Diastolic ~ s(CarbohydrateEnergy) + s(FibreEnergy), data
 ```
 
 #### FibreEnergy
-```{r gender Fibreenergy(Figure22), fig.width= 12, fig.height=8}
-par(mfrow = c(2, 2))
+```{r gender Fibreenergy(Figure22), fig.width= 12, fig.height=10}
+par(mfrow = c(2, 2), oma = c(4, 0, 2, 0))
 
-Fibre_color <- "blue"
 
-plot(systolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 22.1 systolic_male Group - Systolic - FibreEnergy")
-plot(diastolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 22.2  diastolic_male Group - Diastolic - FibreEnergy")
-plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 22.3 systolic_female Group - Systolic - FibreEnergy")
-plot(diastolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = "Figure 22.4 distolic_female Group - Diastolic - FibreEnergy")
+plot_labels <- c("A", "B", "C", "D")
+
+plot(systolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[1]))
+plot(diastolic_male, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[2]))
+plot(systolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[3]))
+plot(diastolic_female, select = 2, seWithMean = TRUE, shade = TRUE, col = Fibre_color, main = paste(plot_labels[4]))
+
+mtext("Figure 20: Relationship between FibreEnergy and Blood pressure by Gender Group", outer = TRUE, cex = 1.2)
+
+mtext("A. Male Group - Systolic - FibreEnergy\nB. Male Group - Diastolic - FibreEnergy\nC. Female Group - Systolic - FibreEnergy\nD. Female Group - Diastolic - FibreEnergy", side = 1, adj = 0.05, line = 2, outer = TRUE, cex = 0.7)
 
 par(mfrow = c(1, 1))
 ```
 
 #### CarbohydrateEnergy
-```{r gender carbohydrateenergy(Figure23), fig.width= 12, fig.height=8}
-par(mfrow = c(2, 2))
-carb_color <- "red"
+```{r gender carbohydrateenergy(Figure23), fig.width= 12, fig.height=10}
+par(mfrow = c(2, 2), oma = c(4, 0, 2, 0))
 
-plot(systolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 23.1 systolic_male Group - Systolic - CarbohydrateEnergy")
-plot(diastolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 23.2 diastolic_male Group - Systolic - CarbohydrateEnergy")
-plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 23.3 systolic_female Group - Diastolic - CarbohydrateEnergy")
-plot(diastolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = "Figure 23.4 diastolic_female Group - Diastolic - CarbohydrateEnergy")
+
+plot_labels <- c("A", "B", "C", "D")
+
+plot(systolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[1]))
+plot(diastolic_male, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[2]))
+plot(systolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[3]))
+plot(diastolic_female, select = 1, seWithMean = TRUE, shade = TRUE, col = carb_color, main = paste(plot_labels[4]))
+
+mtext("Figure 21: Relationship between CarbohydrateEnergy and Blood pressure by Gender Group", outer = TRUE, cex = 1.2)
+
+mtext("A. Male Group - Systolic - CarbohydrateEnergy\nB. Male Group - Diastolic - CarbohydrateEnergy\nC. Female Group - Systolic - CarbohydrateEnergy\nD. Female Group - Diastolic - CarbohydrateEnergy", side = 1, adj = 0.05, line = 2, outer = TRUE, cex = 0.7)
 
 par(mfrow = c(1, 1))
+
 ```
